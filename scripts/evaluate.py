@@ -38,7 +38,6 @@ def train_and_evaluate(model,
     model.evaluate(test_ds)
     evaluator = ModelEvaluator(model, test_ds, class_names, trial=trial)
     evaluator.plot_history(history)
-    evaluator.plot_learning_rate(optimizer.learning_rate, epochs=cfg.epochs)
     evaluator.plot_confusion_matrix()
     evaluator.plot_class_metrics()
     return history
@@ -100,22 +99,6 @@ class ModelEvaluator:
             axs[2].legend()
 
         plt.tight_layout()
-        if save:
-            plt.savefig(self.results_dir / file_name)
-        plt.show()
-
-    def plot_learning_rate(self, learning_rate, epochs, save: bool = True, file_name: str = None):
-        if file_name is None:
-            file_name = f'learning_rate_{self.trial}.png'
-        else:
-            file_name = f'{file_name}_{self.trial}.png'
-        lr_schedule = [learning_rate(epoch).numpy() for epoch in range(epochs)]
-        plt.figure(figsize=(10, 6))
-        plt.plot(range(epochs), lr_schedule)
-        plt.title('Learning Rate Schedule')
-        plt.xlabel('Epochs')
-        plt.ylabel('Learning Rate')
-        plt.grid(True)
         if save:
             plt.savefig(self.results_dir / file_name)
         plt.show()
