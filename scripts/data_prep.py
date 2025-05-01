@@ -6,9 +6,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 cfg = Config()
 
-df = utils.load_and_clean_obs_data(cfg.data_paths)
-df = utils.remove_duplicates(df)
-utils.save_counts(df, cfg.data_dir)
+df = utils.obs_data.load_and_clean_obs_data(cfg.data_paths)
+df = utils.obs_data.remove_duplicates(df)
+utils.obs_data.save_counts(df, cfg.data_dir)
 logger.info("Null values:\n%s", df.isnull().sum())
 
 print(df.info())
@@ -33,8 +33,8 @@ print(df.head())
 
 print('Null: \n', df.isnull().sum())
 
-utils.plot_time(df)
-utils.plot_location(df)
+utils.visualization.plot_time(df)
+utils.visualization.plot_location(df)
 
 
 #######################
@@ -89,7 +89,7 @@ if cfg.download:
     df.to_csv(cfg.data_dir / 'obs_data_cleaned.csv', sep='\t', index=False)
 
 
-utils.train_test_split(source_dir=cfg.full_img_dir,
+utils.img_data.train_test_split(source_dir=cfg.full_img_dir,
                        dest_train_dir=cfg.train_dir,
                        dest_test_dir=cfg.test_dir,
                        dest_val_dir=cfg.val_dir,
