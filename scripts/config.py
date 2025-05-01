@@ -17,8 +17,8 @@ class Config:
     channels: int = 3
     transform_factor: float = 0.2
     batch_size: int = 32
-    epochs: int = 100
-    patience: int = 10
+    epochs: int = 25
+    patience: int = 1
     base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
     frozen_layers: int = -50
     optimizer: str = 'adam'

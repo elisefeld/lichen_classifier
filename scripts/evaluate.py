@@ -104,12 +104,12 @@ class ModelEvaluator:
             plt.savefig(self.results_dir / file_name)
         plt.show()
 
-    def plot_learning_rate(self, lr_schedule, epochs, save: bool = True, file_name: str = None):
+    def plot_learning_rate(self, learning_rate, epochs, save: bool = True, file_name: str = None):
         if file_name is None:
             file_name = f'learning_rate_{self.trial}.png'
         else:
             file_name = f'{file_name}_{self.trial}.png'
-
+        lr_schedule = [learning_rate(epoch).numpy() for epoch in range(epochs)]
         plt.figure(figsize=(10, 6))
         plt.plot(range(epochs), lr_schedule)
         plt.title('Learning Rate Schedule')
