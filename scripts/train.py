@@ -17,11 +17,11 @@ keras.backend.clear_session()
 ##############################
 ######### SPLIT DATA #########
 ##############################
-train_ds = utils.load_dataset(cfg.train_dir, cfg.batch_size, cfg.crop_dim)
-val_ds = utils.load_dataset(cfg.val_dir, cfg.batch_size, cfg.crop_dim)
-test_ds = utils.load_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
+train_ds = utils.img_data.load_img_dataset(cfg.train_dir, cfg.batch_size, cfg.crop_dim)
+val_ds = utils.img_data.load_img_dataset(cfg.val_dir, cfg.batch_size, cfg.crop_dim)
+test_ds = utils.img_data.load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
 
-class_names, num_classes, class_weights = utils.get_class_info(train_ds)
+class_names, num_classes, class_weights = utils.img_data.get_class_info(train_ds)
 
 train_ds = train_ds.cache().prefetch(tf.data.AUTOTUNE)
 val_ds = val_ds.cache().prefetch(tf.data.AUTOTUNE)

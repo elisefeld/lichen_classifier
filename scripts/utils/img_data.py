@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.utils import class_weight
 
-def load_image_dataset(path: Path, batch_size: int = 32, dim: int = 224):
+def load_img_dataset(path: Path, batch_size: int = 32, dim: int = 224):
     data = tf.keras.preprocessing.image_dataset_from_directory(
         path,
         shuffle=True,
