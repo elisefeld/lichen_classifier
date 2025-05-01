@@ -3,6 +3,8 @@ from tensorflow import keras
 from tensorflow.keras.applications import ResNet50, ResNet50V2, ResNet101, ResNet152, EfficientNetB0, EfficientNetV2B0
 from tensorflow.keras.applications.resnet import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
+from tensorflow.keras import optimizers
+
 
 def get_base_model(model_name: str):
     '''Retrieves a pre-trained base model from TensorFlow's Keras applications.'''
@@ -55,9 +57,8 @@ class LichenClassifier(keras.Model):
             'EfficientNetB0': efficientnet_preprocess,
             'EfficientNetV2B0': efficientnet_preprocess
         }
-        self.inputs = keras.Input(
-            shape=(crop_dim, crop_dim, 3), dtype='float32')
-        self.preprocess = preprocess_map[base_model]
+        self.preprocessing_layer = keras.layers.Lambda(
+            preprocess_map[base_model])
         self.augmentation = AugmentLayer(
             seed=seed, factor=factor, dim=dim, crop_dim=crop_dim)
         self.base_model = get_base_model(base_model)
@@ -86,20 +87,66 @@ class LichenClassifier(keras.Model):
             num_classes, activation='softmax', dtype='float32')
 
     def call(self, inputs, training=False):
-        x = self.preprocess(inputs)
+        x = self.preprocessing_layer(inputs)
         x = self.augmentation(x, training=training)
         x = self.base_model(x, training=training)
         x = self.pooling(x)
         x = self.custom_layers(x, training=training)
         x = self.output_layer(x, training=training)
         return x
-    
+
     def freeze_base_model(self):
         for layer in self.base_model.layers:
             layer.trainable = False
+
     def unfreeze_base_model(self, frozen_layers: int = None):
         for i, layer in enumerate(self.base_model.layers):
             if frozen_layers is not None and i < frozen_layers:
                 layer.trainable = False
             else:
                 layer.trainable = True
+
+
+def get_optimizer(optimizer: str = 'SGD',
+                  initial_learning_rate: float = 0.001,
+                  use_schedule: bool = True,
+                  schedule_type: str = 'exponential',
+                  decay_steps: int = 1000,
+                  decay_rate: float = 0.9,
+                  staircase: bool = True,
+                  **optimizer_kwargs):
+    if use_schedule:
+        if schedule_type == 'exponential':
+            learning_rate = optimizers.schedules.ExponentialDecay(initial_learning_rate=initial_learning_rate,
+                                                                  decay_steps=decay_steps,
+                                                                  decay_rate=decay_rate,
+                                                                  staircase=staircase)
+        elif schedule_type == 'cosine':
+            learning_rate = optimizers.schedules.CosineDecayRestarts(initial_learning_rate=initial_learning_rate,
+                                                                     first_decay_steps=decay_steps,
+                                                                     t_mul=1.0,  # can add params for these
+                                                                     m_mul=1.0,
+                                                                     alpha=0.0)
+        else:
+            raise ValueError(
+                "Invalid schedule type. Choose from 'exponential' or 'cosine'.")
+    else:
+        learning_rate = initial_learning_rate
+
+    optimizer = optimizer.lower()
+
+    if optimizer == 'sgd':
+        return optimizers.SGD(learning_rate=learning_rate, **optimizer_kwargs)
+    if optimizer == 'adam':
+        return optimizers.Adam(learning_rate=learning_rate, **optimizer_kwargs)
+    if optimizer == 'rmsprop':
+        return optimizers.RMSprop(learning_rate=learning_rate, **optimizer_kwargs)
+    if optimizer == 'adagrad':
+        return optimizers.Adagrad(learning_rate=learning_rate, **optimizer_kwargs)
+    if optimizer == 'adamax':
+        return optimizers.Adamax(learning_rate=learning_rate, **optimizer_kwargs)
+    if optimizer == 'nadam':
+        return optimizers.Nadam(learning_rate=learning_rate, **optimizer_kwargs)
+    else:
+        raise ValueError(
+            "Invalid optimizer name. Choose from 'SGD', 'Adam', 'RMSprop', 'Adagrad', 'Adamax', or 'Nadam'.")

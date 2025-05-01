@@ -1,27 +1,17 @@
-import pandas as pd
+import logging
 import utils
 from config import Config
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-#######################
-#### DOWNLOAD DATA ####
-#######################
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 cfg = Config()
-raw_obs = pd.concat([pd.read_csv(path)
-                    for path in cfg.data_paths], ignore_index=True)
 
-#######################
-##### CLEAN DATA  #####
-#######################
-raw_obs['large_image_url'] = raw_obs['image_url'].str.replace(
-    'medium', 'large')
-raw_obs['genus'] = raw_obs['scientific_name'].str.split(' ').str[0]
-raw_obs['filename'] = raw_obs['uuid'].apply(lambda x: str(x) + '_full.jpg')
+df = utils.load_and_clean_obs_data(cfg.data_paths)
+df = utils.remove_duplicates(df)
+utils.save_counts(df, cfg.data_dir)
+logger.info("Null values:\n%s", df.isnull().sum())
 
-utils.save_counts(raw_obs, cfg.data_dir)
-
-print(raw_obs.info())
+print(df.info())
 
 keep_cols = ['uuid',
              'filename',
@@ -35,93 +25,55 @@ keep_cols = ['uuid',
              'longitude',
              'taxon_id',
              'genus',
-             'scientific_name',
-             'common_name']
+             'scientific_name']
 
-df = raw_obs[keep_cols].copy()
+df = df[keep_cols].copy()
 df.sort_values(by=['scientific_name'], ascending=False, inplace=True)
 print(df.head())
 
 print('Null: \n', df.isnull().sum())
 
-duplicate_uuids = df[df.duplicated('uuid', keep=False)]
-print(duplicate_uuids.sort_values('uuid'))
-df = df.drop_duplicates(subset='uuid', keep='first')
-
-df['observed_on'] = pd.to_datetime(df['observed_on'], errors='coerce')
-
-df['observed_on'].dt.to_period('M').value_counts().sort_index().plot(
-    kind='line', title='Observations Over Time', figsize=(12, 6))
-plt.show()
-
-df['hour'] = pd.to_datetime(df['time_observed_at'], errors='coerce').dt.hour
-df['hour'].value_counts().sort_index().plot(kind='bar', title='Observations by Hour')
-plt.show()
-
-
-plt.figure(figsize=(10, 6))
-plt.scatter(df['longitude'], df['latitude'], alpha=0.5, s=1)
-plt.title('Geospatial Distribution of Observations')
-plt.xlabel('Longitude')
-plt.ylabel('Latitude')
-plt.show()
-
-
-top_genera = df['genus'].value_counts().head(10).index
-df_top = df[df['genus'].isin(top_genera)]
-
-plt.figure(figsize=(12, 8))
-sns.scatterplot(data=df_top, x='longitude', y='latitude', hue='genus', alpha=0.6, s=15, palette='tab20')
-plt.title('Geospatial Distribution by Genus')
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1)
-plt.tight_layout()
-plt.show()
-
-
-g = sns.FacetGrid(df_top, col='genus', col_wrap=3, height=4)
-g.map(sns.scatterplot, 'longitude', 'latitude', alpha=0.5, s=10)
-g.figure.subplots_adjust(top=0.9)
-g.figure.suptitle('Geospatial Distribution by Genus')
-plt.show()
+utils.plot_time(df)
+utils.plot_location(df)
 
 
 #######################
 #### DOWNLOAD IMGS ####
 #######################
 filter_list = ['Xanthoria',
-                'Xanthomendoza',
-                'Vulpicida',
-                'Usnea',
-                # 'Umbilicaria',
-                # 'Teloschistes',
-                'Rusavskia',
-                'Rhizoplaca',
-                'Punctelia',
-                'Porpidia',
-                'Platismatia',
-                'Pilophorus',
-                'Physcia',
-                'Phaeophyscia',
-                'Peltigera',
-                'Parmotrema',
-                'Parmelia',
-                'Niebla',
-                'Multiclavula',
-                'Lichenomphalia',
-                'Letharia',
-                'Lecanora'
-                'Lasallia',
-                'Icmadophila'
-                'Heterodermia',
-                'Herpothallon',
-                'Graphis',
-                'Flavopunctelia',
-                'Evernia',
-                'Dimelaena',
-                'Dibaeis',
-                'Candelaria',
-                'Arrhenia',
-                'Acarospora']
+               'Xanthomendoza',
+               'Vulpicida',
+               'Usnea',
+               # 'Umbilicaria',
+               # 'Teloschistes',
+               'Rusavskia',
+               'Rhizoplaca',
+               'Punctelia',
+               'Porpidia',
+               'Platismatia',
+               'Pilophorus',
+               'Physcia',
+               'Phaeophyscia',
+               'Peltigera',
+               'Parmotrema',
+               'Parmelia',
+               'Niebla',
+               'Multiclavula',
+               'Lichenomphalia',
+               'Letharia',
+               'Lecanora',
+               'Lasallia',
+               'Icmadophila',
+               'Heterodermia',
+               'Herpothallon',
+               'Graphis',
+               'Flavopunctelia',
+               'Evernia',
+               'Dimelaena',
+               'Dibaeis',
+               'Candelaria',
+               'Arrhenia',
+               'Acarospora']
 
 
 location = df[['filename', 'latitude', 'longitude']].copy()

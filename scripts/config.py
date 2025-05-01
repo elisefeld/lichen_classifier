@@ -2,9 +2,11 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List
 
+
 @dataclass
 class Config:
     filter_list: List[str] = field(default_factory=list)
+    topk: int = 5
     mixed_precision: bool = True
     seed: int = 1113
     val_test_split: float = 0.15
@@ -17,7 +19,7 @@ class Config:
     batch_size: int = 32
     epochs: int = 100
     patience: int = 10
-    base_model: str = 'EfficientNetV2B0' #ResNet50 or EfficientNetV2B0
+    base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
     frozen_layers: int = -50
     optimizer: str = 'adam'
     learning_rate: float = 5e-4
@@ -40,7 +42,8 @@ class Config:
         self.train_dir = self.image_dir / 'training' / 'train'
         self.val_dir = self.image_dir / 'training' / 'val'
         self.test_dir = self.image_dir / 'training' / 'test'
-    
+        self.results_dir = self.base_path / 'results'
+
     @property
     def input_shape(self):
         return (self.crop_dim, self.crop_dim, self.channels)

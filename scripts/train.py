@@ -1,25 +1,18 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
+
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import mixed_precision
-from tensorflow.keras.metrics import top_k_categorical_accuracy
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from sklearn.utils import class_weight
+
 import utils
-import classes
+import model
 from config import Config
+from evaluate import train_and_evaluate
+
 cfg = Config()
 
 POLICY = 'mixed_float16' if cfg.mixed_precision else 'float32'
 mixed_precision.set_global_policy(POLICY)
-
 keras.backend.clear_session()
-
-#utils.load_with_metadata(image_dir=cfg.train_dir,
-#                         location_csv=cfg.data_dir / 'location_data.csv')
 
 ##############################
 ######### SPLIT DATA #########
@@ -28,15 +21,7 @@ train_ds = utils.load_dataset(cfg.train_dir, cfg.batch_size, cfg.crop_dim)
 val_ds = utils.load_dataset(cfg.val_dir, cfg.batch_size, cfg.crop_dim)
 test_ds = utils.load_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
 
-test_classes = test_ds.class_names
-y_train = np.concatenate([np.argmax(y.numpy(), axis=1)
-                          for _, y in train_ds])
-num_classes = len(np.unique(y_train))
-class_weights = dict(enumerate(
-    class_weight.compute_class_weight(
-        class_weight='balanced',
-        classes=np.unique(y_train),
-        y=y_train)))
+class_names, num_classes, class_weights = utils.get_class_info(train_ds)
 
 train_ds = train_ds.cache().prefetch(tf.data.AUTOTUNE)
 val_ds = val_ds.cache().prefetch(tf.data.AUTOTUNE)
@@ -45,7 +30,7 @@ test_ds = test_ds.cache().prefetch(tf.data.AUTOTUNE)
 #############################
 ########## TUNING  ##########
 #############################
-optimizer = utils.get_optimizer(optimizer=cfg.optimizer,
+optimizer = model.get_optimizer(optimizer=cfg.optimizer,
                                 initial_learning_rate=cfg.learning_rate,
                                 use_schedule=cfg.use_schedule,
                                 schedule_type=cfg.schedule_type,
@@ -62,7 +47,7 @@ callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
 ##############################
 ########### MODEL  ###########
 ##############################
-model = classes.LichenClassifier(seed=cfg.seed,
+model = model.LichenClassifier(seed=cfg.seed,
                                  factor=cfg.transform_factor,
                                  dim=cfg.dim,
                                  crop_dim=cfg.crop_dim,
@@ -73,41 +58,36 @@ model = classes.LichenClassifier(seed=cfg.seed,
 ##############################
 ########## TRAINING ##########
 ##############################
-model.compile(loss=keras.losses.CategoricalCrossentropy(label_smoothing=cfg.smoothing),
-              optimizer=optimizer,
-              metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=2)])
+model.freeze_base_model()
+
+coarse_history = train_and_evaluate(model=model,
+                                    train_ds=train_ds,
+                                    val_ds=val_ds,
+                                    test_ds=test_ds,
+                                    optimizer=optimizer,
+                                    callbacks=callbacks,
+                                    class_names=class_names,
+                                    class_weights=class_weights,
+                                    trial=1)
+
+model.unfreeze_base_model(None)
+
+learning_rate = cfg.learning_rate * 0.1  # e.g. 5e-5
+optimizer = model.get_optimizer(optimizer=cfg.optimizer,
+                                initial_learning_rate=learning_rate,
+                                use_schedule=cfg.use_schedule,
+                                schedule_type=cfg.schedule_type,
+                                decay_steps=cfg.decay_steps,
+                                decay_rate=cfg.decay_rate,
+                                staircase=True)
 
 
-dummy_input = tf.random.normal((1, *cfg.input_shape))
-_ = model(dummy_input, training=False)
-
-model.summary()
-
-history = model.fit(train_ds,
-                    validation_data=val_ds,
-                    epochs=cfg.epochs,
-                    callbacks=callbacks,
-                    class_weight=class_weights)
-
-##############################
-######### EVALUATION #########
-##############################
-model.evaluate(test_ds)
-
-# Plot training history
-pd.DataFrame(history.history).plot(figsize=(8, 5))
-plt.grid(True)
-plt.gca().set_ylim(0, 1)
-plt.show()
-
-# Confusion matrix
-predictions = model.predict(test_ds)
-y_pred = np.argmax(predictions, axis=1)
-
-y_true = np.concatenate([np.argmax(labels.numpy(), axis=1)
-                        for _, labels in test_ds])
-
-cm = confusion_matrix(y_true, y_pred, labels=range(len(test_classes)))
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=test_classes)
-disp.plot(xticks_rotation=90)
-plt.show()
+fine_history = train_and_evaluate(model=model,
+                                  train_ds=train_ds,
+                                  val_ds=val_ds,
+                                  test_ds=test_ds,
+                                  optimizer=optimizer,
+                                  callbacks=callbacks,
+                                  class_names=class_names,
+                                  class_weights=class_weights,
+                                  trial=2)
