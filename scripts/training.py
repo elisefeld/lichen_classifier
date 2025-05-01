@@ -1,7 +1,7 @@
-from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import mixed_precision
@@ -11,10 +11,15 @@ from sklearn.utils import class_weight
 import utils
 import classes
 from config import Config
-
 cfg = Config()
+
+POLICY = 'mixed_float16' if cfg.mixed_precision else 'float32'
+mixed_precision.set_global_policy(POLICY)
+
 keras.backend.clear_session()
-mixed_precision.set_global_policy('mixed_float16')
+
+#utils.load_with_metadata(image_dir=cfg.train_dir,
+#                         location_csv=cfg.data_dir / 'location_data.csv')
 
 ##############################
 ######### SPLIT DATA #########
@@ -68,9 +73,13 @@ model = classes.LichenClassifier(seed=cfg.seed,
 ##############################
 ########## TRAINING ##########
 ##############################
-model.compile(loss=keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+model.compile(loss=keras.losses.CategoricalCrossentropy(label_smoothing=cfg.smoothing),
               optimizer=optimizer,
               metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=2)])
+
+
+dummy_input = tf.random.normal((1, *cfg.input_shape))
+_ = model(dummy_input, training=False)
 
 model.summary()
 

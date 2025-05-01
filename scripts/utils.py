@@ -13,10 +13,12 @@ from tensorflow.keras import optimizers
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def save_counts(df: pd.DataFrame, counts_dir: Path):
     counts_dir.mkdir(parents=True, exist_ok=True)
     for var in ['scientific_name', 'genus']:
-        df[var].value_counts().to_csv(counts_dir / f'{var}_counts.csv', sep='\t')
+        df[var].value_counts().to_csv(
+            counts_dir / f'{var}_counts.csv', sep='\t')
 
 
 def save_imgs(df: pd.DataFrame,
@@ -114,6 +116,7 @@ def train_test_split(source_dir: Path,
                 print(
                     f"Copied {len(imgs)} images to {split_name} set: {genus_dir.name}/{species_dir.name}")
 
+
 def load_dataset(path: Path, batch_size: int = 32, dim: int = 224):
     data = tf.keras.preprocessing.image_dataset_from_directory(
         path,
@@ -170,3 +173,31 @@ def get_optimizer(optimizer: str = 'SGD',
     else:
         raise ValueError(
             "Invalid optimizer name. Choose from 'SGD', 'Adam', 'RMSprop', 'Adagrad', 'Adamax', or 'Nadam'.")
+
+
+def load_with_metadata(
+        image_dir: Path,
+        location_csv: Path,
+        batch_size: int = 32,
+        dim: int = 224,
+        shuffle: bool = True,
+        seed: int = 1113):
+    image_ds = tf.keras.preprocessing.image_dataset_from_directory(
+        image_dir,
+        labels='inferred',
+        label_mode='categorical',
+        batch_size=batch_size,
+        image_size=(dim, dim),
+        shuffle=shuffle,
+        seed=seed,
+    )
+
+    filenames = sorted([p.name for p in image_dir.glob('*/*/*.jpg')])
+
+    df = pd.read_csv(location_csv, sep='\t')  # or ',' depending on file
+    df = df[df['filename'].isin(filenames)]
+    df = df.sort_values('filename').reset_index(drop=True)
+
+    latitudes = df['latitude'].astype('float32').values
+    longitudes = df['longitude'].astype('float32').values
+    locations = tf.convert_to_tensor(list(zip(latitudes, longitudes)), dtype=tf.float32)
