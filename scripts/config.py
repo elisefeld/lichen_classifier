@@ -6,7 +6,7 @@ from typing import List
 @dataclass
 class Config:
     filter_list: List[str] = field(default_factory=list)
-    topk: int = 5
+    topk: int = 3
     mixed_precision: bool = True
     seed: int = 1113
     val_test_split: float = 0.15

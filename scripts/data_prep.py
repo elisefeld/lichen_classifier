@@ -35,8 +35,8 @@ print(df.head())
 
 print('Null: \n', df.isnull().sum())
 
-utils.visualization.obs_plots.plot_time(df)
-utils.visualization.obs_plots.plot_location(df)
+visualization.obs_plots.plot_time(df)
+visualization.obs_plots.plot_location(df)
 
 
 #######################
