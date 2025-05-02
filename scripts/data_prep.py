@@ -1,6 +1,8 @@
 import logging
-import utils
+import utils.obs_data
+import visualization.obs_plots
 from config import Config
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,8 +35,8 @@ print(df.head())
 
 print('Null: \n', df.isnull().sum())
 
-utils.visualization.plot_time(df)
-utils.visualization.plot_location(df)
+utils.visualization.obs_plots.plot_time(df)
+utils.visualization.obs_plots.plot_location(df)
 
 
 #######################

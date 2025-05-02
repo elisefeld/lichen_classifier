@@ -4,10 +4,11 @@ from tensorflow import keras
 from tensorflow.keras import mixed_precision
 
 import utils
-import model
-from model import get_optimizer
+import modeling.cnn_model as cnn_model
+from modeling.cnn_model import get_optimizer
+from modeling.evaluate import train_and_evaluate
+import visualization.img_plots
 from config import Config
-from scripts.utils.evaluate import train_and_evaluate
 
 cfg = Config()
 
@@ -24,7 +25,7 @@ test_ds = utils.img_data.load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop
 
 class_names, num_classes, class_weights = utils.img_data.get_class_info(train_ds)
 
-utils.visualization.rgb_histograms_grid(train_ds, class_names)
+visualization.img_plots.rgb_histograms_grid(train_ds, class_names)
 
 train_ds = train_ds.cache().prefetch(tf.data.AUTOTUNE)
 val_ds = val_ds.cache().prefetch(tf.data.AUTOTUNE)
@@ -50,7 +51,7 @@ callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
 ##############################
 ########### MODEL  ###########
 ##############################
-model = model.LichenClassifier(seed=cfg.seed,
+model = cnn_model.LichenClassifier(seed=cfg.seed,
                                  factor=cfg.transform_factor,
                                  dim=cfg.dim,
                                  crop_dim=cfg.crop_dim,
