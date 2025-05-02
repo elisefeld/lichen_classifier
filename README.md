@@ -2,28 +2,28 @@
 This project is a CNN pipeline for classifying lichens in images. 
 
 ## Project Structure
-[config](scripts/config.py) - configuration file that contains all the hyperparameters and paths to the data directories  
+[config](src/config.py) - configuration file that contains all the hyperparameters and paths to the data directories  
 
-[data_prep](scripts/data_prep.py) - main script for downloading and cleaning the iNaturalist observation data  
+[data_prep](src/data_prep.py) - main script for downloading and cleaning the iNaturalist observation data  
 
-[train](scripts/train.py) - main script for training the model using the training and validation sets  
+[train](src/train.py) - main script for training the model using the training and validation sets  
 
 ### utils modules
-[scraping](scripts/utils/scraping.py) - fetching images from iNaturalist and creating training, validation and test sets  
+[scraping](src/utils/scraping.py) - fetching images from iNaturalist and creating training, validation and test sets  
 
-[obs_data](scripts/utils/obs_data.py) - data wrangling functions for observation data  
+[obs_data](src/utils/obs_data.py) - data wrangling functions for observation data  
 
-[img_data](scripts/utils/img_data.py) - loading and label functions for images   
+[img_data](src/utils/img_data.py) - loading and label functions for images   
 
 ### visualization modules
-[obs_plots](scripts/visualization/obs_plots.py) - plotting functions for observation data  
+[obs_plots](src/visualization/obs_plots.py) - plotting functions for observation data  
 
-[img_plots](scripts/visualization/img_plots.py) - plotting functions for image data  
+[img_plots](src/visualization/img_plots.py) - plotting functions for image data  
 
 ### modeling modules
-[cnn_model](scripts/modeling/cnn_model.py) - convolutional neural network model architecture  
+[cnn_model](src/modeling/cnn_model.py) - convolutional neural network model architecture  
 
-[evaluate](scripts/modeling/evaluate.py) - evaluating the trained model on a test set  
+[evaluate](src/modeling/evaluate.py) - evaluating the trained model on a test set  
     
 
 ## Datasets
