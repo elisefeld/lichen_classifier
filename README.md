@@ -9,7 +9,7 @@ This project is a CNN pipeline for classifying lichens in images.
 [train](scripts/train.py) - main script for training the model using the training and validation sets  
 
 ### utils modules
-[scraping](scripts/utils/scraping.py) scraping.py - fetching images from iNaturalist and creating training, validation and test sets  
+[scraping](scripts/utils/scraping.py) - fetching images from iNaturalist and creating training, validation and test sets  
 
 [obs_data](scripts/utils/obs_data.py) - data wrangling functions for observation data  
 
@@ -27,5 +27,15 @@ This project is a CNN pipeline for classifying lichens in images.
     
 
 ## Datasets
-The raw data can be found in the [data folder](data/raw). It was downloaded using [iNaturalist's export tool](https://www.inaturalist.org/observations/export) in two batches (before 2017-01-01 and between 2017-01-01 and 2025-04-19. The query parameters are listed [here](data/obs_data_queries.md).
+The raw data can be found in the [data folder](data/raw). It was downloaded using [iNaturalist's export tool](https://www.inaturalist.org/observations/export) in two batches (before 2017-01-01 and between 2017-01-01 and 2025-04-19.) 
+
+Filters:
+- Research grade
+- Most identifiers agreed
+- Open geoprivacy (location not obscured)
+- United States
+
+Since lichen are not restricted to one taxonomic group, 'lichen' were defined as observations matching the 1,017 genera on the [Lichen genera](https://en.wikipedia.org/wiki/Category:Lichen_genera) wikipedia category page. Taxon IDs were queried using iNaturalist's API and then passed into the export tool. 
+
+The exact query parameters are listed [here](data/obs_data_queries.md).
 
