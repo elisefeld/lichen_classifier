@@ -1,9 +1,8 @@
-
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import mixed_precision
 
-import utils
+from utils import img_data
 import modeling.cnn_model as cnn_model
 from modeling.cnn_model import get_optimizer
 from modeling.evaluate import train_and_evaluate
@@ -19,11 +18,11 @@ keras.backend.clear_session()
 ##############################
 ######### SPLIT DATA #########
 ##############################
-train_ds = utils.img_data.load_img_dataset(cfg.train_dir, cfg.batch_size, cfg.crop_dim)
-val_ds = utils.img_data.load_img_dataset(cfg.val_dir, cfg.batch_size, cfg.crop_dim)
-test_ds = utils.img_data.load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
+train_ds = img_data.load_img_dataset(cfg.train_dir, cfg.batch_size, cfg.crop_dim)
+val_ds = img_data.load_img_dataset(cfg.val_dir, cfg.batch_size, cfg.crop_dim)
+test_ds = img_data.load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
 
-class_names, num_classes, class_weights = utils.img_data.get_class_info(train_ds)
+class_names, num_classes, class_weights = img_data.get_class_info(train_ds)
 
 visualization.img_plots.rgb_histograms_grid(train_ds, class_names)
 
