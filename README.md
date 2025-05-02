@@ -27,5 +27,5 @@ This project is a CNN pipeline for classifying lichens in images.
     
 
 ## Datasets
-The raw data is found in the folder data/raw. It was downloaded using ([iNaturalist's export tool](https://www.inaturalist.org/observations/export)) in two batches.
+The raw data can be found in the [data folder](data/raw). It was downloaded using [iNaturalist's export tool](https://www.inaturalist.org/observations/export) in two batches (before 2017-01-01 and between 2017-01-01 and 2025-04-19. The query parameters are listed [here](data/obs_data_queries.md).
 
