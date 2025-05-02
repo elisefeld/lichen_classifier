@@ -1,21 +1,25 @@
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List
+import random
 
+random.seed(1113)
 
 @dataclass
 class Config:
     filter_list: List[str] = field(default_factory=list)
-    topk: int = 3
+    topk: int = 2
     mixed_precision: bool = True
-    seed: int = 1113
     val_test_split: float = 0.15
     download: bool = False
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
     dim: int = 256
     crop_dim: int = 224
     channels: int = 3
+    rotation_factor: float = 0.2
     transform_factor: float = 0.2
+    contrast_factor: float = 0.2
+    translation_factor: float = 0.2
     batch_size: int = 32
     epochs: int = 100
     patience: int = 10

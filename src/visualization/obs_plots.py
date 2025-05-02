@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import geopandas as gpd
+import contextily as cx
+from shapely.geometry import Point
+
 
 def plot_time(df: pd.DataFrame):
     df['observed_on_month'].value_counts().sort_index().plot(
@@ -37,3 +41,18 @@ def plot_location(df: pd.DataFrame):
     plt.show()
 
 
+def plot_genus_distribution_map(df, top_n=10):
+    df = df.dropna(subset=['latitude', 'longitude'])
+    df['geometry'] = df.apply(lambda row: Point(row['longitude'], row['latitude']), axis=1)
+    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs='EPSG:4326')
+    gdf = gdf.to_crs(epsg=3857)
+
+    top_genus = gdf['genus'].value_counts().nlargest(top_n).index
+    gdf = gdf[gdf['genus'].isin(top_genus)]
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+    gdf.plot(ax=ax, column='genus', categorical=True, legend=True, markersize=10, alpha=0.6)
+    cx.add_basemap(ax, source=cx.providers.CartoDB.Positron)
+    plt.title("Lichen Genus Distribution Across Map Tiles")
+    plt.tight_layout()
+    plt.show()
