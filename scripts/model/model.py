@@ -147,6 +147,5 @@ def get_optimizer(optimizer: str = 'SGD',
         return optimizers.Adamax(learning_rate=learning_rate, **optimizer_kwargs)
     if optimizer == 'nadam':
         return optimizers.Nadam(learning_rate=learning_rate, **optimizer_kwargs)
-    else:
-        raise ValueError(
-            "Invalid optimizer name. Choose from 'SGD', 'Adam', 'RMSprop', 'Adagrad', 'Adamax', or 'Nadam'.")
+    raise ValueError(
+        "Invalid optimizer name. Choose from 'SGD', 'Adam', 'RMSprop', 'Adagrad', 'Adamax', or 'Nadam'.")

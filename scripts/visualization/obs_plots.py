@@ -35,3 +35,5 @@ def plot_location(df: pd.DataFrame):
     g.figure.subplots_adjust(top=0.9)
     g.figure.suptitle('Geospatial Distribution by Genus')
     plt.show()
+
+

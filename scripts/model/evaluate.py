@@ -1,11 +1,12 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
-from config import Config
-from pathlib import Path
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.metrics import top_k_categorical_accuracy
+
+from scripts.config import Config
 
 cfg = Config()
 

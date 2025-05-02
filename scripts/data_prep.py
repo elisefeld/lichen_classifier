@@ -89,7 +89,7 @@ if cfg.download:
     df.to_csv(cfg.data_dir / 'obs_data_cleaned.csv', sep='\t', index=False)
 
 
-utils.img_data.train_test_split(source_dir=cfg.full_img_dir,
+utils.scraping.train_test_split(source_dir=cfg.full_img_dir,
                        dest_train_dir=cfg.train_dir,
                        dest_test_dir=cfg.test_dir,
                        dest_val_dir=cfg.val_dir,
