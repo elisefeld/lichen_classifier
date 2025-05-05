@@ -7,29 +7,36 @@ random.seed(1113)
 
 @dataclass
 class Config:
-    filter_list: List[str] = field(default_factory=list)
-    topk: int = 2
-    mixed_precision: bool = True
-    val_test_split: float = 0.15
-    download: bool = False
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
+    download: bool = False
+    plot_imgs: bool = True
+    plot_obs: bool = True
+    mixed_precision: bool = True
+    use_schedule: bool = True
+
+    filter_list: List[str] = field(default_factory=list)
+    val_test_split: float = 0.15
+    topk: int = 2
+
     dim: int = 256
     crop_dim: int = 224
     channels: int = 3
+
     rotation_factor: float = 0.2
     transform_factor: float = 0.2
     contrast_factor: float = 0.2
     translation_factor: float = 0.2
+
     batch_size: int = 32
     epochs: int = 100
     patience: int = 10
+
     base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
     frozen_layers: int = -50
     optimizer: str = 'adam'
     learning_rate: float = 5e-4
     decay_steps: int = 30000
     decay_rate: float = 0.95
-    use_schedule: bool = True
     schedule_type: str = 'cosine'
     smoothing: float = 0.05
 
