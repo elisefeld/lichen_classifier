@@ -1,7 +1,10 @@
+import random
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
 from sklearn.utils import class_weight
+
+random.seed(1113)
 
 def load_img_dataset(path: Path, batch_size: int = 32, dim: int = 224):
     data = tf.keras.preprocessing.image_dataset_from_directory(
@@ -11,9 +14,9 @@ def load_img_dataset(path: Path, batch_size: int = 32, dim: int = 224):
         label_mode='categorical',
         batch_size=batch_size,
         image_size=(dim, dim),
-        seed=1113,
         follow_links=True)
     return data
+
 
 def get_class_info(ds: tf.data.Dataset):
     class_names = ds.class_names
