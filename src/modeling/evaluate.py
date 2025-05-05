@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.metrics import top_k_categorical_accuracy
 
-from scripts.config import Config
+from config import Config
 
 cfg = Config()
 
@@ -159,6 +159,3 @@ class ModelEvaluator:
             y_true, y_pred, target_names=self.test_classes, output_dict=True)
         print("Classification Report:", report)
         return report
-    
-    def save_results(self):
-        

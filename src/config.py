@@ -14,7 +14,6 @@ class Config:
     mixed_precision: bool = True
     use_schedule: bool = True
 
-    filter_list: List[str] = field(default_factory=list)
     val_test_split: float = 0.15
     topk: int = 2
 
@@ -23,7 +22,7 @@ class Config:
     channels: int = 3
 
     rotation_factor: float = 0.2
-    transform_factor: float = 0.2
+    #transform_factor: float = 0.2
     contrast_factor: float = 0.2
     translation_factor: float = 0.2
 
@@ -58,3 +57,8 @@ class Config:
     @property
     def input_shape(self):
         return (self.crop_dim, self.crop_dim, self.channels)
+
+    @property
+    def class_names(self):
+        return [name.name for name in self.train_dir.iterdir() if name.is_dir()]
+    

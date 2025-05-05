@@ -7,51 +7,54 @@ import cv2
 import pandas as pd
 import numpy as np
 
+from config import Config
+cfg = Config()
+
 def save_imgs(df: pd.DataFrame,
               output_dir: Path,
               to_filter: bool,
               filter_type: str = 'scientific_name',
               filter_list: list = []) -> list:
+    if cfg.download:
+        output_dir = Path(output_dir)
+        failed_uuids = []
 
-    output_dir = Path(output_dir)
-    failed_uuids = []
+        for _, row in df.iterrows():
+            url, uuid, sci_name, genus = row['large_image_url'], row['uuid'], row['scientific_name'], row['genus']
 
-    for _, row in df.iterrows():
-        url, uuid, sci_name, genus = row['large_image_url'], row['uuid'], row['scientific_name'], row['genus']
+            if to_filter:
+                value = sci_name if filter_type == 'scientific_name' else genus
+                if value not in filter_list:
+                    print(f"Skipping {value} not in the list.")
+                    continue
 
-        if to_filter:
-            value = sci_name if filter_type == 'scientific_name' else genus
-            if value not in filter_list:
-                print(f"Skipping {value} not in the list.")
+            folder_path = output_dir / 'full' / genus / sci_name
+            file_path = folder_path / f"{uuid}_{'full'}.jpg"
+            folder_path.mkdir(parents=True, exist_ok=True)
+
+            if file_path.exists():
+                print('Image already exists:', file_path)
                 continue
 
-        folder_path = output_dir / 'full' / genus / sci_name
-        file_path = folder_path / f"{uuid}_{'full'}.jpg"
-        folder_path.mkdir(parents=True, exist_ok=True)
+            try:
+                time.sleep(1)
+                res = requests.get(url, stream=True, timeout=60)
+                res.raise_for_status()
 
-        if file_path.exists():
-            print('Image already exists:', file_path)
-            continue
+                img_array = np.asarray(bytearray(res.content), dtype=np.uint8)
+                img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-        try:
-            time.sleep(1)
-            res = requests.get(url, stream=True, timeout=60)
-            res.raise_for_status()
+                if img is None:
+                    raise ValueError(f"Failed to decode image {uuid}")
 
-            img_array = np.asarray(bytearray(res.content), dtype=np.uint8)
-            img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                cv2.imwrite(str(file_path), img)
+                print('Image successfully downloaded:', file_path)
 
-            if img is None:
-                raise ValueError(f"Failed to decode image {uuid}")
+            except (requests.RequestException, ValueError) as e:
+                print(f"Failed to download/save image {uuid}: {e}")
+                failed_uuids.append(uuid)
 
-            cv2.imwrite(str(file_path), img)
-            print('Image successfully downloaded:', file_path)
-
-        except (requests.RequestException, ValueError) as e:
-            print(f"Failed to download/save image {uuid}: {e}")
-            failed_uuids.append(uuid)
-
-    return failed_uuids
+        return failed_uuids
 
 
 def train_test_split(source_dir: Path,

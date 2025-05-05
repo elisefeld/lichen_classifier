@@ -67,7 +67,7 @@ class AugmentLayer(keras.layers.Layer):
     def __init__(self,
                  rotation: float = 0.2,
                  contrast: float = 0.2,
-                 translation: tuple = (0.2, 0.2),
+                 translation: float = 0.2,
                  dim: int = 256,
                  crop_dim: int = 224):
         '''A custom Keras layer for applying data augmentation to input images.'''
@@ -78,7 +78,7 @@ class AugmentLayer(keras.layers.Layer):
             keras.layers.RandomFlip('horizontal'),
             keras.layers.RandomRotation(rotation),
             keras.layers.RandomContrast(contrast),
-            keras.layers.RandomTranslation(translation)
+            keras.layers.RandomTranslation(translation, translation)
         ])
 
     def call(self, inputs, training=False):

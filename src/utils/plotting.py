@@ -5,58 +5,13 @@ import cv2
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-
-def color_histogram(df, class_names, bins: int = 256):
-    avg_histograms = {
-        class_name: {
-            'r': np.zeros(bins),
-            'g': np.zeros(bins),
-            'b': np.zeros(bins),
-            'count': 0
-        } for class_name in class_names
-    }
-
-    for batch_images, batch_labels in df:
-        for img, label in zip(batch_images, batch_labels):
-            label = tf.argmax(label, axis=-1).numpy()
-            class_name = class_names[label]
-            img = img.numpy()
-            img = (
-                img * 255).astype(np.uint8) if img.max() <= 1.0 else img.astype(np.uint8)
-
-            b_hist = cv2.calcHist([img], [0], None, [bins], [0, 256]).flatten()
-            g_hist = cv2.calcHist([img], [1], None, [bins], [0, 256]).flatten()
-            r_hist = cv2.calcHist([img], [2], None, [bins], [0, 256]).flatten()
-
-            avg_histograms[class_name]['b'] += b_hist
-            avg_histograms[class_name]['g'] += g_hist
-            avg_histograms[class_name]['r'] += r_hist
-            avg_histograms[class_name]['count'] += 1
-
-    for class_name in class_names:
-        count = avg_histograms[class_name]['count']
-        if count == 0:
-            continue
-        r = avg_histograms[class_name]['r'] / count
-        g = avg_histograms[class_name]['g'] / count
-        b = avg_histograms[class_name]['b'] / count
-        x = np.arange(bins)
-
-        plt.figure(figsize=(10, 6))
-        plt.plot(x, r, color='red', label='Red Channel')
-        plt.plot(x, g, color='green', label='Green Channel')
-        plt.plot(x, b, color='blue', label='Blue Channel')
-        plt.title(f'Average Color Channel Histogram for {class_name}')
-        plt.xlabel('Pixel Intensity')
-        plt.ylabel('Normalized Frequency')
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
+from pathlib import Path
+from config import Config
+cfg = Config()
 
 
 def rgb_histograms_grid(df, class_names, bins=256, cols=4):
-    # Collect histograms
+    save_path = cfg.results_dir / 'plot_rgb_histograms.png'
     histograms = {
         class_name: {'r': np.zeros(bins), 'g': np.zeros(
             bins), 'b': np.zeros(bins), 'count': 0}
@@ -68,7 +23,8 @@ def rgb_histograms_grid(df, class_names, bins=256, cols=4):
             label = tf.argmax(label, axis=-1).numpy()
             class_name = class_names[label]
             img = img.numpy()
-            img = (img * 255).astype(np.uint8) if img.max() <= 1.0 else img.astype(np.uint8)
+            img = (
+                img * 255).astype(np.uint8) if img.max() <= 1.0 else img.astype(np.uint8)
 
             b = cv2.calcHist([img], [0], None, [bins], [0, 256]).flatten()
             g = cv2.calcHist([img], [1], None, [bins], [0, 256]).flatten()
@@ -113,15 +69,53 @@ def rgb_histograms_grid(df, class_names, bins=256, cols=4):
 
     fig.suptitle('RGB Channel Histograms per Genus', fontsize=16)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.show()
+    plt.savefig(save_path)
 
 
-def plot_class_distribution(df: pd.DataFrame, class_names: list):
+def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
+    save_path = cfg.results_dir / 'plot_class_distribution.png'
+    if filter:
+        df = df[df['genus'].isin(cfg.class_names)].copy()
     class_counts = df['genus'].value_counts()
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 10))
     sns.barplot(x=class_counts.index, y=class_counts.values)
     plt.title('Class Distribution')
     plt.xlabel('Genus')
     plt.ylabel('Count')
     plt.xticks(rotation=90)
-    plt.show()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_time(df: pd.DataFrame, column: str = 'observed_on_month', type: str = 'Month', filter: bool = True):
+    save_path = cfg.results_dir / f'plot_{type}.png'
+    if filter:
+        df = df[df['genus'].isin(cfg.class_names)].copy()
+    df[column].value_counts().sort_index().plot(
+        kind='line', title=f'Observations by {type}', figsize=(12, 6))
+    plt.xlabel(type)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_location(df: pd.DataFrame, filter: bool = True, facet: bool = False):
+    if filter:
+        df = df[df['genus'].isin(cfg.class_names)].copy()
+
+    if facet:
+        save_path = cfg.results_dir / f'plot_location_facetted.png'
+        g = sns.FacetGrid(df, col='genus', col_wrap=3, height=4)
+        g.map(sns.scatterplot, 'longitude', 'latitude', alpha=0.5, s=10)
+        g.figure.subplots_adjust(top=0.9)
+        g.figure.suptitle('Geospatial Distribution by Genus')
+
+    else:
+        save_path = cfg.results_dir / f'plot_location.png'
+        plt.figure(figsize=(10, 6))
+        plt.scatter(df['longitude'], df['latitude'], alpha=0.5, s=1)
+        plt.title('Geospatial Distribution of Observations')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+
+    plt.savefig(save_path)
+    plt.close()
