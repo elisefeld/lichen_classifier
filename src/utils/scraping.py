@@ -1,7 +1,6 @@
 from pathlib import Path
 import shutil
 import time
-import random
 import requests
 import cv2
 import pandas as pd
@@ -10,6 +9,10 @@ import numpy as np
 from config import Config
 cfg = Config()
 
+# Set random seeds
+np.random.seed(cfg.seed)
+
+### Functions ###
 def save_imgs(df: pd.DataFrame,
               output_dir: Path,
               to_filter: bool,

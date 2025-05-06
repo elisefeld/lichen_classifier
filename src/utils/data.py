@@ -7,13 +7,17 @@ import numpy as np
 import tensorflow as tf
 from sklearn.utils import class_weight
 
-random.seed(1113)
+from config import Config 
+cfg = Config()
 
+# Set random seeds
+np.random.seed(cfg.seed)
+tf.random.set_seed(cfg.seed)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
+### Functions ###
 def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     # Read and concatenate CSV files
     df = pd.concat([pd.read_csv(path) for path in paths], ignore_index=True)
@@ -38,7 +42,7 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
                     duplicate_uuids.sort_values('uuid'))
     df = df.drop_duplicates(subset='uuid', keep='first')
     logger.info("Null values:\n%s", df.isnull().sum())
-    #df = df.dropna(axis='rows', how='any')
+    # df = df.dropna(axis='rows', how='any')
     return df
 
 

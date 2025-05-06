@@ -8,8 +8,10 @@ from modeling.cnn_model import LichenClassifier, get_optimizer
 from modeling.evaluate import train_and_evaluate
 
 from config import Config
-
 cfg = Config()
+
+# Set random seeds
+tf.random.set_seed(cfg.seed)
 
 POLICY = 'mixed_float16' if cfg.mixed_precision else 'float32'
 mixed_precision.set_global_policy(POLICY)
@@ -22,7 +24,6 @@ test_ds = load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
 
 # Get class information
 class_names, num_classes, class_weights = get_class_info(train_ds)
-
 
 if cfg.plot_imgs:
     rgb_histograms_grid(train_ds, class_names)

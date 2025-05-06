@@ -5,12 +5,16 @@ import cv2
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
+
 from config import Config
 cfg = Config()
 
+# Set random seeds
+np.random.seed(cfg.seed)
+tf.random.set_seed(cfg.seed)
 
-def rgb_histograms_grid(df, class_names, bins=256, cols=4):
+### Functions ###
+def rgb_histograms_grid(df: tf.data.Dataset, class_names: list, bins:int=256, cols:int=4):
     save_path = cfg.results_dir / 'plot_rgb_histograms.png'
     histograms = {
         class_name: {'r': np.zeros(bins), 'g': np.zeros(
@@ -70,7 +74,7 @@ def rgb_histograms_grid(df, class_names, bins=256, cols=4):
     fig.suptitle('RGB Channel Histograms per Genus', fontsize=16)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.savefig(save_path)
-
+    plt.close()
 
 def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
     save_path = cfg.results_dir / 'plot_class_distribution.png'

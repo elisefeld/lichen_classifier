@@ -1,4 +1,3 @@
-import random
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.applications import ResNet50, ResNet50V2, ResNet101, ResNet152, EfficientNetB0, EfficientNetV2B0
@@ -6,8 +5,13 @@ from tensorflow.keras.applications.resnet import preprocess_input as resnet_prep
 from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
 from tensorflow.keras import optimizers
 
-random.seed(1113)
+from config import Config
+cfg = Config() 
 
+# Set random seeds
+tf.random.set_seed(cfg.seed)
+
+# Dictionaries
 PREPROCESS_MAP = {
     'ResNet50': resnet_preprocess,
     'ResNet50V2': resnet_preprocess,
@@ -27,36 +31,16 @@ MODEL_DICT = {
 }
 
 OPT_DICT = {
-        'adam': optimizers.Adam,
-        'sgd': optimizers.SGD,
-        'rmsprop': optimizers.RMSprop,
-        'adagrad': optimizers.Adagrad,
-        'adamax': optimizers.Adamax,
-        'nadam': optimizers.Nadam
-    }
+    'adam': optimizers.Adam,
+    'sgd': optimizers.SGD,
+    'rmsprop': optimizers.RMSprop,
+    'adagrad': optimizers.Adagrad,
+    'adamax': optimizers.Adamax,
+    'nadam': optimizers.Nadam
+}
 
-
+### Functions ###
 def get_base_model(model_name: str):
-    '''
-    Retrieves a pre-trained base model from TensorFlow's Keras applications.
-
-    Args:
-        model_name (str): The name of the pre-trained model to retrieve. 
-                          Supported models include:
-                          - 'ResNet50'
-                          - 'ResNet50V2'
-                          - 'ResNet101'
-                          - 'ResNet152'
-                          - 'EfficientNetB0'
-                          - 'EfficientNetV2B0'
-
-    Returns:
-        keras.Model: A Keras model instance with the specified architecture, 
-                     pre-trained on the ImageNet dataset, and without the top classification layer.
-
-    Raises:
-        ValueError: If the provided model_name is not in the list of supported models.
-    '''
     if model_name not in MODEL_DICT:
         raise ValueError(f'Invalid model name: {model_name}. '
                          f'Choose from {list(MODEL_DICT.keys())}.')
@@ -97,7 +81,8 @@ class LichenClassifier(keras.Model):
 
                  ):
         super().__init__()
-        self.preprocessing_layer = keras.layers.Lambda(PREPROCESS_MAP[base_model])
+        self.preprocessing_layer = keras.layers.Lambda(
+            PREPROCESS_MAP[base_model])
         self.augmentation = AugmentLayer(rotation=rotation, contrast=contrast,
                                          translation=translation, dim=dim, crop_dim=crop_dim)
         self.base_model = get_base_model(base_model)
@@ -127,7 +112,7 @@ class LichenClassifier(keras.Model):
         x = self.custom_layers(x, training=training)
         x = self.output_layer(x, training=training)
         return x
-    
+
     def freeze_base_model(self):
         '''
         Freezes the layers of the base model to make them non-trainable.
@@ -178,7 +163,7 @@ def get_optimizer(name: str = 'adam',
                                                                 staircase=staircase)
         elif schedule == 'cosine':
             lr_schedule = optimizers.schedules.CosineDecayRestarts(initial_learning_rate=lr,
-                                                                  first_decay_steps=decay_steps)
+                                                                   first_decay_steps=decay_steps)
         else:
             raise ValueError(
                 "Invalid schedule type. Choose from 'exponential' or 'cosine'.")

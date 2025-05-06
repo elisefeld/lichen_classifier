@@ -1,13 +1,11 @@
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List
-import random
-
-random.seed(1113)
 
 @dataclass
 class Config:
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
+    seed = 1113
     download: bool = False
     plot_imgs: bool = True
     plot_obs: bool = True
