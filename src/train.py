@@ -3,7 +3,7 @@ from tensorflow import keras
 from tensorflow.keras import mixed_precision
 
 from utils.data import load_img_dataset, get_class_info
-from utils.plotting import rgb_histograms_grid
+from utils.plotting import plot_rgb_histograms
 from modeling.cnn_model import LichenClassifier, get_optimizer
 from modeling.evaluate import train_and_evaluate
 
@@ -26,7 +26,7 @@ test_ds = load_img_dataset(cfg.test_dir, cfg.batch_size, cfg.crop_dim)
 class_names, num_classes, class_weights = get_class_info(train_ds)
 
 if cfg.plot_imgs:
-    rgb_histograms_grid(train_ds, class_names)
+    plot_rgb_histograms(train_ds, class_names)
 
 # Prefetching and caching
 train_ds = train_ds.cache().prefetch(tf.data.AUTOTUNE)
@@ -67,10 +67,11 @@ coarse_history = train_and_evaluate(model=model,
                                     callbacks=callbacks,
                                     class_names=class_names,
                                     class_weights=class_weights,
+                                    type='coarse',
                                     trial=1)  # edit this so it saves the graphs to results dir
 
 # Stage 2: Train the model with unfrozen base model (fine-tuning)
-model.unfreeze_base_model(None)
+model.unfreeze_base_model(cfg.frozen_layers)
 learning_rate = cfg.learning_rate * 0.1
 optimizer = get_optimizer(name=cfg.optimizer,
                           lr=learning_rate,
@@ -89,4 +90,7 @@ fine_history = train_and_evaluate(model=model,
                                   callbacks=callbacks,
                                   class_names=class_names,
                                   class_weights=class_weights,
+                                  type='fine_tune',
                                   trial=2)
+
+

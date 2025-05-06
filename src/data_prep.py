@@ -1,7 +1,5 @@
 import logging
-from utils import data
-from utils import scraping, plotting
-
+from utils import data, scraping, plotting
 from config import Config
 cfg = Config()
 
@@ -10,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 df = data.load_and_clean_obs_data(cfg.data_paths)
-
 logger.info(df.info())
 
 keep_cols = ['uuid',
@@ -39,15 +36,16 @@ df.sort_values(by=['scientific_name'], ascending=False, inplace=True)
 logger.info(df.head())
 
 # Plotting
-plotting.plot_class_distribution(df, filter=True)
+to_filter = False
+plotting.plot_class_distribution(df, filter=to_filter)
 
 plotting.plot_time(df, column='observed_on_day', type='Day')
 plotting.plot_time(df, column='observed_on_month', type='Month')
 plotting.plot_time(df, column='observed_on_year', type='Year')
 
 logger.info("Number of unique genus values: %d", df['genus'].nunique())
-plotting.plot_location(df, filter=True, facet=False)
-plotting.plot_location(df, filter=True, facet=True)
+plotting.plot_location(df, filter=to_filter, facet=False)
+plotting.plot_location(df, filter=to_filter, facet=True)
 
 #######################
 #### DOWNLOAD IMGS ####
@@ -102,8 +100,4 @@ location = df[['filename', 'latitude', 'longitude']].copy()
 location.to_csv(cfg.data_dir / 'location.csv', sep='\t', index=False)
 df.to_csv(cfg.data_dir / 'obs_data_cleaned.csv', sep='\t', index=False)
 
-scraping.train_test_split(source_dir=cfg.full_img_dir,
-                          dest_train_dir=cfg.train_dir,
-                          dest_test_dir=cfg.test_dir,
-                          dest_val_dir=cfg.val_dir,
-                          ratio=cfg.val_test_split)
+

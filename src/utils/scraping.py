@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 import time
+import random
 import requests
 import cv2
 import pandas as pd
@@ -11,6 +12,7 @@ cfg = Config()
 
 # Set random seeds
 np.random.seed(cfg.seed)
+random.seed(cfg.seed)
 
 ### Functions ###
 def save_imgs(df: pd.DataFrame,
@@ -65,8 +67,7 @@ def train_test_split(source_dir: Path,
                      dest_test_dir: Path,
                      dest_val_dir: Path,
                      ratio: float = 0.15,
-                     seed: int = 1113):
-    random.seed(seed)
+                     seed: int = cfg.seed):
 
     for genus_dir in source_dir.iterdir():
         if not genus_dir.is_dir():

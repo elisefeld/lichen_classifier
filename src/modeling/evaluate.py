@@ -1,10 +1,14 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.metrics import top_k_categorical_accuracy
+import json
+
+plt.style.use('seaborn-v0_8-colorblind')
 
 from config import Config
 cfg = Config()
@@ -22,6 +26,7 @@ def train_and_evaluate(model: keras.Model,
                        callbacks: list,
                        class_names: list,
                        class_weights: np.ndarray = None,
+                       type: str = 'fine_tune',
                        trial: int = None):
     model.compile(
         loss=keras.losses.CategoricalCrossentropy(
@@ -30,6 +35,7 @@ def train_and_evaluate(model: keras.Model,
         metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=cfg.topk)]
     )
 
+    # Print model summary
     model.summary()
 
     history = model.fit(
@@ -39,11 +45,14 @@ def train_and_evaluate(model: keras.Model,
         callbacks=callbacks,
         class_weight=class_weights
     )
-    model.evaluate(test_ds)
+    results = model.evaluate(test_ds, return_dict=True)
+    with open(cfg.results_dir / f"test_metrics_{trial}.json", "w") as f:
+        json.dump(results, f, indent=4)
     evaluator = ModelEvaluator(model, test_ds, class_names, trial=trial)
     evaluator.plot_history(history)
     evaluator.plot_confusion_matrix()
     evaluator.plot_class_metrics()
+    evaluator.save_history(history, cfg.training_history_dir / f"{type}_history_trial_{trial}.json")
     return history
 
 
@@ -51,24 +60,22 @@ class ModelEvaluator:
     def __init__(self, model, test_ds, test_classes, trial: int = None, results_dir: Path = cfg.results_dir):
         self.model = model
         self.test_ds = test_ds
-        self.test_classes = test_classes
+        self.test_classes = cfg.test_classes
         self.results_dir = results_dir
         self.y_true = None
         self.y_pred = None
         self.trial = trial
 
     def get_true_pred_vals(self):
-        predictions = self.model.predict(self.test_ds)
-        self.y_pred = np.argmax(predictions, axis=1)
-        self.y_true = np.concatenate([np.argmax(labels.numpy(), axis=1)
-                                      for _, labels in self.test_ds])
+        if self.y_true is None or self.y_pred is None:
+            predictions = self.model.predict(self.test_ds)
+            self.y_pred = np.argmax(predictions, axis=1)
+            self.y_true = np.concatenate([np.argmax(labels.numpy(), axis=1)
+                                          for _, labels in self.test_ds])
         return self.y_true, self.y_pred
 
-    def plot_history(self, history, save: bool = True, file_name: str = None):
-        if file_name is None:
-            file_name = f'history_{self.trial}.png'
-        else:
-            file_name = f'{file_name}_{self.trial}.png'
+    def plot_history(self, history):
+        file_name = f'training_history_{self.trial}.png'
 
         acc = history.history['accuracy']
         val_acc = history.history['val_accuracy']
@@ -82,50 +89,52 @@ class ModelEvaluator:
         n_subplots = 3 if top_k_acc and val_top_k_acc else 2
         fig, axs = plt.subplots(1, n_subplots, figsize=(6*n_subplots, 5))
 
-        axs[0].plot(epochs, acc, 'r', label='Training acc')
-        axs[0].plot(epochs, val_acc, 'b', label='Validation acc')
+        axs[0].plot(epochs, acc, 'r', label='Training')
+        axs[0].plot(epochs, val_acc, 'b', label='Validation')
         axs[0].set_title('Accuracy')
         axs[0].grid(True)
         axs[0].legend()
 
-        axs[1].plot(epochs, loss, 'r', label='Training loss')
-        axs[1].plot(epochs, val_loss, 'b', label='Validation loss')
+        axs[1].plot(epochs, loss, 'r', label='Training')
+        axs[1].plot(epochs, val_loss, 'b', label='Validation')
         axs[1].set_title('Loss')
         axs[1].grid(True)
         axs[1].legend()
 
         if n_subplots == 3:
-            axs[2].plot(epochs, top_k_acc, 'r', label='Training top-k acc')
+            axs[2].plot(epochs, top_k_acc, 'r', label='Training')
             axs[2].plot(epochs, val_top_k_acc, 'b',
-                        label='Validation top-k acc')
+                        label='Validation')
             axs[2].set_title(f'Top-k accuracy (k={cfg.topk})')
             axs[2].grid(True)
             axs[2].legend()
 
         plt.tight_layout()
-        if save:
-            plt.savefig(self.results_dir / file_name)
+        plt.savefig(cfg.training_history_dir / file_name)
         plt.close()
 
-    def plot_confusion_matrix(self, save: bool = True, file_name: str = None):
-        if file_name is None:
-            file_name = f'confusion_matrix_{self.trial}.png'
-        else:
-            file_name = f'{file_name}_{self.trial}.png'
+    def plot_confusion_matrix(self):
+        file_name = f'confusion_matrix_{self.trial}.png'
+
         y_true, y_pred = self.get_true_pred_vals()
         cm = confusion_matrix(
             y_true, y_pred, labels=range(len(self.test_classes)))
         disp = ConfusionMatrixDisplay(
             confusion_matrix=cm, display_labels=self.test_classes)
         disp.plot(xticks_rotation=90)
-        if save:
-            plt.savefig(self.results_dir / file_name)
+        plt.savefig(cfg.confusion_matrix_dir / file_name)
         plt.close()
-        return cm
 
     def plot_class_metrics(self):
+        file_name = f'class_metrics_{self.trial}.csv'
         y_true, y_pred = self.get_true_pred_vals()
         report = classification_report(
             y_true, y_pred, target_names=self.test_classes, output_dict=True)
         print("Classification Report:", report)
-        return report
+        report_df = pd.DataFrame(report).transpose()
+        report_df.to_csv(cfg.class_metrics_dir / file_name, sep='\t')
+
+    def save_history(self, history, history_file):
+        history_dict = history.history
+        with open(history_file, 'w') as f:
+            json.dump(history_dict, f, indent=4)

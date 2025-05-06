@@ -36,11 +36,13 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     df['time_observed_at_hour'] = df['time_observed_at_dt'].dt.hour
     df['time_observed_at_minute'] = df['time_observed_at_dt'].dt.minute
     df['time_observed_at_second'] = df['time_observed_at_dt'].dt.second
+
     duplicate_uuids = df[df.duplicated('uuid', keep=False)]
     if not duplicate_uuids.empty:
         logger.info("Found duplicate UUIDs:\n%s",
                     duplicate_uuids.sort_values('uuid'))
     df = df.drop_duplicates(subset='uuid', keep='first')
+    
     logger.info("Null values:\n%s", df.isnull().sum())
     # df = df.dropna(axis='rows', how='any')
     return df

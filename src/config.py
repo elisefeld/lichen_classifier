@@ -26,10 +26,10 @@ class Config:
 
     batch_size: int = 32
     epochs: int = 100
-    patience: int = 10
+    patience: int = 5
 
     base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
-    frozen_layers: int = -50
+    frozen_layers: int = 50
     optimizer: str = 'adam'
     learning_rate: float = 5e-4
     decay_steps: int = 30000
@@ -84,5 +84,11 @@ class Config:
         return (self.crop_dim, self.crop_dim, self.channels)
 
     @property
-    def class_names(self):
+    def train_classes(self):
         return [name.name for name in self.train_dir.iterdir() if name.is_dir()]
+    @property
+    def val_classes(self):
+        return [name.name for name in self.val_dir.iterdir() if name.is_dir()]
+    @property
+    def test_classes(self):
+        return [name.name for name in self.test_dir.iterdir() if name.is_dir()]

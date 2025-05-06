@@ -40,11 +40,11 @@ OPT_DICT = {
 }
 
 ### Functions ###
-def get_base_model(model_name: str):
+def get_base_model(model_name: str) -> keras.Model:
     if model_name not in MODEL_DICT:
         raise ValueError(f'Invalid model name: {model_name}. '
                          f'Choose from {list(MODEL_DICT.keys())}.')
-    return MODEL_DICT[model_name](include_top=False, weights='imagenet')
+    return MODEL_DICT[model_name](include_top=False, weights='imagenet', input_shape=cfg.input_shape)
 
 
 class AugmentLayer(keras.layers.Layer):
@@ -114,38 +114,14 @@ class LichenClassifier(keras.Model):
         return x
 
     def freeze_base_model(self):
-        '''
-        Freezes the layers of the base model to make them non-trainable.
-
-        This method iterates through all the layers of the base model and sets 
-        their `trainable` attribute to `False`. This used to prevent 
-        the base model's weights from being updated during training, allowing 
-        only the newly added layers to be trained.
-
-        Returns:
-            None
-        '''
         for layer in self.base_model.layers:
             layer.trainable = False
 
-    def unfreeze_base_model(self, frozen_layers: int = None):
-        '''
-        Unfreezes layers of the base model for training.
-
-        This method sets the `trainable` attribute of the layers in the base model.
-        Layers with indices less than `frozen_layers` will remain frozen (non-trainable),
-        while the rest will be unfrozen (trainable).
-
-        Args:
-            frozen_layers (int, optional): The number of layers to keep frozen. 
-                If None, all layers will be unfrozen. Defaults to None.
-        '''
-        for i, layer in enumerate(self.base_model.layers):
-            if frozen_layers is not None and i < frozen_layers:
+    def unfreeze_base_model(self, unfreeze_layers=None):
+        self.base_model.trainable = True
+        if unfreeze_layers is not None:
+            for layer in self.base_model.layers[:-unfreeze_layers]:
                 layer.trainable = False
-            else:
-                layer.trainable = True
-
 
 def get_optimizer(name: str = 'adam',
                   lr: float = 1e-3,
@@ -154,7 +130,7 @@ def get_optimizer(name: str = 'adam',
                   decay_rate: float = 0.9,
                   use_schedule: bool = True,
                   staircase: bool = True,
-                  **kwargs):
+                  **kwargs) -> optimizers.Optimizer:
     if use_schedule:
         if schedule == 'exponential':
             lr_schedule = optimizers.schedules.ExponentialDecay(initial_learning_rate=lr,
@@ -170,10 +146,7 @@ def get_optimizer(name: str = 'adam',
     else:
         lr_schedule = lr
 
-    if name is not None and isinstance(name, str):
-        name = name.lower()
-
-    if name not in OPT_DICT:
+    if name.lower() not in OPT_DICT:
         raise ValueError(
             f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
     return OPT_DICT[name](learning_rate=lr_schedule, **kwargs)

@@ -5,6 +5,10 @@ import cv2
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
+from utils import data
+
+plt.style.use('seaborn-v0_8-colorblind')
 
 from config import Config
 cfg = Config()
@@ -14,7 +18,58 @@ np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
 ### Functions ###
-def rgb_histograms_grid(df: tf.data.Dataset, class_names: list, bins:int=256, cols:int=4):
+
+def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
+    save_path = cfg.results_dir / 'plot_class_distribution.png'
+    if filter:
+        df = df[df['genus'].isin(cfg.train_classes)].copy()
+    class_counts = df['genus'].value_counts()
+    plt.figure(figsize=(12, 10))
+    sns.barplot(x=class_counts.index, y=class_counts.values)
+    plt.title('Class Distribution')
+    plt.xlabel('Genus')
+    plt.ylabel('Count')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
+def plot_time(df: pd.DataFrame, column: str = 'observed_on_month', type: str = 'Month', filter: bool = True):
+    save_path = cfg.results_dir / f'plot_{type}.png'
+    if filter:
+        df = df[df['genus'].isin(cfg.train_classes)].copy()
+    df[column].value_counts().sort_index().plot(
+        kind='line', title=f'Observations by {type}', figsize=(12, 6))
+    plt.xlabel(type)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_location(df: pd.DataFrame, filter: bool = True, facet: bool = False):
+    if filter:
+        df = df[df['genus'].isin(cfg.train_classes)].copy()
+
+    if facet:
+        save_path = cfg.results_dir / f'plot_location_facetted.png'
+        g = sns.FacetGrid(df, col='genus', col_wrap=3, height=4)
+        g.map(sns.scatterplot, 'longitude', 'latitude', alpha=0.5, s=10)
+        g.figure.subplots_adjust(top=0.9)
+        g.figure.suptitle('Geospatial Distribution by Genus')
+
+    else:
+        save_path = cfg.results_dir / f'plot_location.png'
+        plt.figure(figsize=(10, 6))
+        plt.scatter(df['longitude'], df['latitude'], alpha=0.5, s=1)
+        plt.title('Geospatial Distribution of Observations')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+
+
+def plot_rgb_histograms(df: tf.data.Dataset, class_names: list, bins:int=256, cols:int=4):
     save_path = cfg.results_dir / 'plot_rgb_histograms.png'
     histograms = {
         class_name: {'r': np.zeros(bins), 'g': np.zeros(
@@ -73,53 +128,5 @@ def rgb_histograms_grid(df: tf.data.Dataset, class_names: list, bins:int=256, co
 
     fig.suptitle('RGB Channel Histograms per Genus', fontsize=16)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.savefig(save_path)
-    plt.close()
-
-def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
-    save_path = cfg.results_dir / 'plot_class_distribution.png'
-    if filter:
-        df = df[df['genus'].isin(cfg.class_names)].copy()
-    class_counts = df['genus'].value_counts()
-    plt.figure(figsize=(12, 10))
-    sns.barplot(x=class_counts.index, y=class_counts.values)
-    plt.title('Class Distribution')
-    plt.xlabel('Genus')
-    plt.ylabel('Count')
-    plt.xticks(rotation=90)
-    plt.savefig(save_path)
-    plt.close()
-
-
-def plot_time(df: pd.DataFrame, column: str = 'observed_on_month', type: str = 'Month', filter: bool = True):
-    save_path = cfg.results_dir / f'plot_{type}.png'
-    if filter:
-        df = df[df['genus'].isin(cfg.class_names)].copy()
-    df[column].value_counts().sort_index().plot(
-        kind='line', title=f'Observations by {type}', figsize=(12, 6))
-    plt.xlabel(type)
-    plt.savefig(save_path)
-    plt.close()
-
-
-def plot_location(df: pd.DataFrame, filter: bool = True, facet: bool = False):
-    if filter:
-        df = df[df['genus'].isin(cfg.class_names)].copy()
-
-    if facet:
-        save_path = cfg.results_dir / f'plot_location_facetted.png'
-        g = sns.FacetGrid(df, col='genus', col_wrap=3, height=4)
-        g.map(sns.scatterplot, 'longitude', 'latitude', alpha=0.5, s=10)
-        g.figure.subplots_adjust(top=0.9)
-        g.figure.suptitle('Geospatial Distribution by Genus')
-
-    else:
-        save_path = cfg.results_dir / f'plot_location.png'
-        plt.figure(figsize=(10, 6))
-        plt.scatter(df['longitude'], df['latitude'], alpha=0.5, s=1)
-        plt.title('Geospatial Distribution of Observations')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-
-    plt.savefig(save_path)
+    plt.savefig(save_path, bbox_inches="tight")
     plt.close()
