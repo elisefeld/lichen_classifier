@@ -1,11 +1,11 @@
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass
+
 
 @dataclass
 class Config:
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
-    seed = 1113
+    seed: int = 1113
     download: bool = False
     plot_imgs: bool = True
     plot_obs: bool = True
@@ -20,7 +20,7 @@ class Config:
     channels: int = 3
 
     rotation_factor: float = 0.2
-    #transform_factor: float = 0.2
+    # transform_factor: float = 0.2
     contrast_factor: float = 0.2
     translation_factor: float = 0.2
 
@@ -60,7 +60,6 @@ class Config:
         self.time_plots_dir = self.results_dir / 'time_plots'
         self.location_plots_dir = self.results_dir / 'location_plots'
 
-
         dirs_to_create = [
             self.data_dir / 'raw',
             self.counts_dir,
@@ -87,4 +86,3 @@ class Config:
     @property
     def class_names(self):
         return [name.name for name in self.train_dir.iterdir() if name.is_dir()]
-    
