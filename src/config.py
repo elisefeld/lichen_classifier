@@ -45,12 +45,40 @@ class Config:
         ]
         self.counts_dir = self.data_dir / 'counts'
         self.location_dir = self.data_dir / 'location'
+
         self.image_dir = self.base_path / 'images'
         self.full_img_dir = self.image_dir / 'full'
         self.train_dir = self.image_dir / 'training' / 'train'
         self.val_dir = self.image_dir / 'training' / 'val'
         self.test_dir = self.image_dir / 'training' / 'test'
+
         self.results_dir = self.base_path / 'results'
+        self.training_history_dir = self.results_dir / 'training_history'
+        self.confusion_matrix_dir = self.results_dir / 'confusion_matrix'
+        self.class_metrics_dir = self.results_dir / 'class_metrics'
+        self.histograms_dir = self.results_dir / 'histograms'
+        self.time_plots_dir = self.results_dir / 'time_plots'
+        self.location_plots_dir = self.results_dir / 'location_plots'
+
+
+        dirs_to_create = [
+            self.data_dir / 'raw',
+            self.counts_dir,
+            self.location_dir,
+            self.full_img_dir,
+            self.train_dir,
+            self.val_dir,
+            self.test_dir,
+            self.training_history_dir,
+            self.confusion_matrix_dir,
+            self.class_metrics_dir,
+            self.histograms_dir,
+            self.time_plots_dir,
+            self.location_plots_dir
+        ]
+
+        for d in dirs_to_create:
+            d.mkdir(parents=True, exist_ok=True)
 
     @property
     def input_shape(self):
