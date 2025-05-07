@@ -1,3 +1,4 @@
+from config import Config
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +11,6 @@ import json
 
 plt.style.use('seaborn-v0_8-colorblind')
 
-from config import Config
 cfg = Config()
 
 # Set random seeds
@@ -18,6 +18,8 @@ np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
 ### Functions ###
+
+
 def train_and_evaluate(model: keras.Model,
                        train_ds: tf.data.Dataset,
                        val_ds: tf.data.Dataset,
@@ -25,9 +27,9 @@ def train_and_evaluate(model: keras.Model,
                        optimizer: keras.optimizers.Optimizer,
                        callbacks: list,
                        class_names: list,
-                       class_weights: np.ndarray = None,
-                       type: str = 'fine_tune',
-                       trial: int = None):
+                       class_weights: np.ndarray,
+                       type: str,
+                       trial: int):
     model.compile(
         loss=keras.losses.CategoricalCrossentropy(
             label_smoothing=cfg.smoothing),
@@ -46,18 +48,23 @@ def train_and_evaluate(model: keras.Model,
         class_weight=class_weights
     )
     results = model.evaluate(test_ds, return_dict=True)
-    with open(cfg.results_dir / f"test_metrics_{trial}.json", "w") as f:
+
+    with open(cfg.results_dir / f"test_metrics_trial_{trial}.json", "w") as f:
         json.dump(results, f, indent=4)
-    evaluator = ModelEvaluator(model, test_ds, class_names, trial=trial)
+
+    evaluator = ModelEvaluator(model, test_ds, trial=trial)
+
     evaluator.plot_history(history)
     evaluator.plot_confusion_matrix()
     evaluator.plot_class_metrics()
-    evaluator.save_history(history, cfg.training_history_dir / f"{type}_history_trial_{trial}.json")
+    evaluator.save_history(history, cfg.training_history_dir /
+                           f"{type}_history_trial_{trial}.json")
+
     return history
 
 
 class ModelEvaluator:
-    def __init__(self, model, test_ds, test_classes, trial: int = None, results_dir: Path = cfg.results_dir):
+    def __init__(self, model, test_ds, trial: int = None, results_dir: Path = cfg.results_dir):
         self.model = model
         self.test_ds = test_ds
         self.test_classes = cfg.test_classes
@@ -75,7 +82,7 @@ class ModelEvaluator:
         return self.y_true, self.y_pred
 
     def plot_history(self, history):
-        file_name = f'training_history_{self.trial}.png'
+        file_name = f'training_history_trial_{self.trial}.png'
 
         acc = history.history['accuracy']
         val_acc = history.history['val_accuracy']
@@ -91,13 +98,13 @@ class ModelEvaluator:
 
         axs[0].plot(epochs, acc, 'r', label='Training')
         axs[0].plot(epochs, val_acc, 'b', label='Validation')
-        axs[0].set_title('Accuracy')
+        axs[0].set_title('Model Accuracy')
         axs[0].grid(True)
         axs[0].legend()
 
         axs[1].plot(epochs, loss, 'r', label='Training')
         axs[1].plot(epochs, val_loss, 'b', label='Validation')
-        axs[1].set_title('Loss')
+        axs[1].set_title('Model Loss')
         axs[1].grid(True)
         axs[1].legend()
 
@@ -105,7 +112,7 @@ class ModelEvaluator:
             axs[2].plot(epochs, top_k_acc, 'r', label='Training')
             axs[2].plot(epochs, val_top_k_acc, 'b',
                         label='Validation')
-            axs[2].set_title(f'Top-k accuracy (k={cfg.topk})')
+            axs[2].set_title(f'Model Top-k accuracy (k={cfg.topk})')
             axs[2].grid(True)
             axs[2].legend()
 
@@ -114,7 +121,7 @@ class ModelEvaluator:
         plt.close()
 
     def plot_confusion_matrix(self):
-        file_name = f'confusion_matrix_{self.trial}.png'
+        file_name = f'confusion_matrix_trial_{self.trial}.png'
 
         y_true, y_pred = self.get_true_pred_vals()
         cm = confusion_matrix(
@@ -122,11 +129,12 @@ class ModelEvaluator:
         disp = ConfusionMatrixDisplay(
             confusion_matrix=cm, display_labels=self.test_classes)
         disp.plot(xticks_rotation=90)
-        plt.savefig(cfg.confusion_matrix_dir / file_name)
+        plt.tight_layout
+        plt.savefig(cfg.confusion_matrix_dir / file_name) 
         plt.close()
 
     def plot_class_metrics(self):
-        file_name = f'class_metrics_{self.trial}.csv'
+        file_name = f'class_metrics_trial_{self.trial}.csv'
         y_true, y_pred = self.get_true_pred_vals()
         report = classification_report(
             y_true, y_pred, target_names=self.test_classes, output_dict=True)
@@ -134,7 +142,7 @@ class ModelEvaluator:
         report_df = pd.DataFrame(report).transpose()
         report_df.to_csv(cfg.class_metrics_dir / file_name, sep='\t')
 
-    def save_history(self, history, history_file):
+    def save_history(self, history, history_file: Path):
         history_dict = history.history
         with open(history_file, 'w') as f:
             json.dump(history_dict, f, indent=4)
