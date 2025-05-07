@@ -36,7 +36,7 @@ df.sort_values(by=['scientific_name'], ascending=False, inplace=True)
 logger.info(df.head())
 
 # Plotting
-to_filter = False
+to_filter = True
 plotting.plot_class_distribution(df, filter=to_filter)
 
 plotting.plot_time(df, column='observed_on_day', type='Day')

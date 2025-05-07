@@ -54,7 +54,7 @@ optimizer = get_optimizer(name=cfg.optimizer,
 coarse_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                   patience=cfg.patience,
                                                   restore_best_weights=True),
-                    keras.callbacks.ModelCheckpoint(f'coarse_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
+                    keras.callbacks.ModelCheckpoint(cfg.model_dir / f'coarse_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
                                                     save_best_only=True)]
 
 model.freeze_base_model()
@@ -73,7 +73,7 @@ coarse_history = train_and_evaluate(model=model,
 fine_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                 patience=cfg.patience,
                                                 restore_best_weights=True),
-                  keras.callbacks.ModelCheckpoint(f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
+                  keras.callbacks.ModelCheckpoint(cfg.model_dir/f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
                                                   save_best_only=True)]
 
 optimizer = get_optimizer(name=cfg.optimizer,

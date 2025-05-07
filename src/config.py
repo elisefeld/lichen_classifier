@@ -8,7 +8,7 @@ class Config:
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
     seed: int = 1113
     download: bool = False
-    plot_imgs: bool = True
+    plot_imgs: bool = False
     plot_obs: bool = True
     mixed_precision: bool = True
     use_schedule: bool = True
@@ -60,6 +60,7 @@ class Config:
         self.histograms_dir = self.results_dir / 'histograms'
         self.time_plots_dir = self.results_dir / 'time_plots'
         self.location_plots_dir = self.results_dir / 'location_plots'
+        self.model_dir = self.base_path / 'models'
 
         dirs_to_create = [
             self.data_dir / 'raw',
@@ -74,7 +75,8 @@ class Config:
             self.class_metrics_dir,
             self.histograms_dir,
             self.time_plots_dir,
-            self.location_plots_dir
+            self.location_plots_dir,
+            self.model_dir
         ]
 
         for d in dirs_to_create:
