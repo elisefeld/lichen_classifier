@@ -6,7 +6,7 @@ from tensorflow.keras.applications.efficientnet import preprocess_input as effic
 from tensorflow.keras import optimizers
 
 from config import Config
-cfg = Config() 
+cfg = Config()
 
 # Set random seeds
 tf.random.set_seed(cfg.seed)
@@ -40,6 +40,8 @@ OPT_DICT = {
 }
 
 ### Functions ###
+
+
 def get_base_model(model_name: str) -> keras.Model:
     if model_name not in MODEL_DICT:
         raise ValueError(f'Invalid model name: {model_name}. '
@@ -49,11 +51,11 @@ def get_base_model(model_name: str) -> keras.Model:
 
 class AugmentLayer(keras.layers.Layer):
     def __init__(self,
-                 rotation: float = 0.2,
-                 contrast: float = 0.2,
-                 translation: float = 0.2,
-                 dim: int = 256,
-                 crop_dim: int = 224):
+                 dim: int,
+                 crop_dim: int,
+                 rotation: float,
+                 contrast: float,
+                 translation: float):
         '''A custom Keras layer for applying data augmentation to input images.'''
         super().__init__()
         self.augment = keras.Sequential([
@@ -65,21 +67,19 @@ class AugmentLayer(keras.layers.Layer):
             keras.layers.RandomTranslation(translation, translation)
         ])
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training: bool = False):
         return self.augment(inputs, training=training) if training else inputs
 
 
 class LichenClassifier(keras.Model):
     def __init__(self,
-                 num_classes: int,
-                 base_model: str = 'ResNet50',
-                 dim: int = 256,
-                 crop_dim: int = 224,
-                 rotation: float = 0.2,
-                 contrast: float = 0.2,
-                 translation: float = 0.2
-
-                 ):
+                 dim: int,
+                 crop_dim: int,
+                 rotation: float,
+                 contrast: float,
+                 translation: float,
+                 base_model: str,
+                 num_classes: int):
         super().__init__()
         self.preprocessing_layer = keras.layers.Lambda(
             PREPROCESS_MAP[base_model])
@@ -104,7 +104,7 @@ class LichenClassifier(keras.Model):
         self.output_layer = keras.layers.Dense(
             num_classes, activation='softmax', dtype='float32')
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training: bool = False):
         x = self.preprocessing_layer(inputs)
         x = self.augmentation(x, training=training)
         x = self.base_model(x, training=training)
@@ -123,13 +123,14 @@ class LichenClassifier(keras.Model):
             for layer in self.base_model.layers[:-unfreeze_layers]:
                 layer.trainable = False
 
-def get_optimizer(name: str = 'adam',
-                  lr: float = 1e-3,
-                  schedule: str = 'exponential',
-                  decay_steps: int = 1000,
-                  decay_rate: float = 0.9,
-                  use_schedule: bool = True,
-                  staircase: bool = True,
+
+def get_optimizer(name: str,
+                  lr: float,
+                  schedule: str,
+                  decay_steps: int,
+                  decay_rate: float,
+                  use_schedule: bool,
+                  staircase: bool,
                   **kwargs) -> optimizers.Optimizer:
     if use_schedule:
         if schedule == 'exponential':
