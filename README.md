@@ -6,19 +6,17 @@ This project is a CNN pipeline for classifying lichens in images.
 
 [data_prep](src/data_prep.py) - main script for downloading and cleaning the iNaturalist observation data  
 
+[split](src/split.py) - main script for splitting the image into test, training and validation sets
+
 [train](src/train.py) - main script for training the model using the training and validation sets  
+
 
 ### utils modules
 [scraping](src/utils/scraping.py) - fetching images from iNaturalist and creating training, validation and test sets  
 
-[obs_data](src/utils/obs_data.py) - data wrangling functions for observation data  
+[obs_data](src/utils/data.py) - data wrangling functions for observation data, loading and label functions for images 
 
-[img_data](src/utils/img_data.py) - loading and label functions for images   
-
-### visualization modules
-[obs_plots](src/visualization/obs_plots.py) - plotting functions for observation data  
-
-[img_plots](src/visualization/img_plots.py) - plotting functions for image data  
+[plotting](src/visualization/plotting.py) - plotting functions for observation and image data  
 
 ### modeling modules
 [cnn_model](src/modeling/cnn_model.py) - convolutional neural network model architecture  
