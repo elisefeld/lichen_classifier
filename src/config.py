@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Config:
+    trial_num: int = 1
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
     seed: int = 1113
     download: bool = False
@@ -20,7 +21,6 @@ class Config:
     channels: int = 3
 
     rotation_factor: float = 0.2
-    # transform_factor: float = 0.2
     contrast_factor: float = 0.2
     translation_factor: float = 0.2
 
@@ -31,10 +31,11 @@ class Config:
     base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
     frozen_layers: int = 50
     optimizer: str = 'adam'
-    learning_rate: float = 5e-4
+    coarse_learning_rate: float = 5e-4
+    fine_learning_rate: float = 1e-5
     decay_steps: int = 30000
     decay_rate: float = 0.95
-    schedule_type: str = 'cosine'
+    schedule_type: str = 'exponential'
     smoothing: float = 0.05
 
     def __post_init__(self):
@@ -86,9 +87,11 @@ class Config:
     @property
     def train_classes(self):
         return [name.name for name in self.train_dir.iterdir() if name.is_dir()]
+    
     @property
     def val_classes(self):
         return [name.name for name in self.val_dir.iterdir() if name.is_dir()]
+    
     @property
     def test_classes(self):
         return [name.name for name in self.test_dir.iterdir() if name.is_dir()]

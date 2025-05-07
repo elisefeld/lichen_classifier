@@ -48,14 +48,14 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     return df
 
 
-def save_counts(df: pd.DataFrame, counts_dir: Path) -> None:
+def save_counts(df: pd.DataFrame, counts_dir: Path = cfg.data_dir) -> None:
     counts_dir.mkdir(parents=True, exist_ok=True)
     for var in ['scientific_name', 'genus']:
         df[var].value_counts().to_csv(
             counts_dir / f'{var}_counts.csv', sep='\t')
 
 
-def load_img_dataset(path: Path, batch_size: int = 32, dim: int = 224):
+def load_img_dataset(path: Path, batch_size: int = cfg.batch_size, dim: int = cfg.dim) -> tf.data.Dataset:
     data = tf.keras.preprocessing.image_dataset_from_directory(
         path,
         shuffle=True,
@@ -67,7 +67,7 @@ def load_img_dataset(path: Path, batch_size: int = 32, dim: int = 224):
     return data
 
 
-def get_class_info(ds: tf.data.Dataset):
+def get_class_info(ds: tf.data.Dataset) -> tuple:
     class_names = ds.class_names
     y_train = np.concatenate([np.argmax(y.numpy(), axis=1)
                               for _, y in ds])

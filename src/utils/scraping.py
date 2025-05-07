@@ -17,7 +17,7 @@ random.seed(cfg.seed)
 ### Functions ###
 def save_imgs(df: pd.DataFrame,
               output_dir: Path,
-              to_filter: bool,
+              to_filter: bool,  
               filter_type: str = 'scientific_name',
               filter_list: list = []) -> list:
     if cfg.download:
