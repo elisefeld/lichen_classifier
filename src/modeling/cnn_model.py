@@ -49,25 +49,36 @@ def get_base_model(model_name: str) -> keras.Model:
     return MODEL_DICT[model_name](include_top=False, weights='imagenet', input_shape=cfg.input_shape)
 
 
+class CommonPreprocessing(keras.layers.Layer):
+    def __init__(self, dim: int, crop_dim: int):
+        super().__init__()
+        self.dim = dim
+        self.crop_dim = crop_dim
+        self.common_preprocess = tf.keras.Sequential([
+            tf.keras.layers.Resizing(
+                cfg.dim, cfg.dim, crop_to_aspect_ratio=True),
+            tf.keras.layers.CenterCrop(self.crop_dim, self.crop_dim)
+        ])
+
+    def call(self, inputs):
+        return self.common_preprocess(inputs)
+
+
 class AugmentLayer(keras.layers.Layer):
     def __init__(self,
-                 dim: int,
-                 crop_dim: int,
                  rotation: float,
                  contrast: float,
                  translation: float):
         '''A custom Keras layer for applying data augmentation to input images.'''
         super().__init__()
         self.augment = keras.Sequential([
-            keras.layers.Resizing(dim, dim, crop_to_aspect_ratio=True),
-            keras.layers.RandomCrop(crop_dim, crop_dim),
             keras.layers.RandomFlip('horizontal'),
             keras.layers.RandomRotation(rotation),
             keras.layers.RandomContrast(contrast),
             keras.layers.RandomTranslation(translation, translation)
         ])
 
-    def call(self, inputs, training: bool = False):
+    def call(self, inputs, training: bool):
         return self.augment(inputs, training=training) if training else inputs
 
 
@@ -83,8 +94,10 @@ class LichenClassifier(keras.Model):
         super().__init__()
         self.preprocessing_layer = keras.layers.Lambda(
             PREPROCESS_MAP[base_model])
+        self.common_preprocessing = CommonPreprocessing(
+            dim=dim, crop_dim=crop_dim)
         self.augmentation = AugmentLayer(rotation=rotation, contrast=contrast,
-                                         translation=translation, dim=dim, crop_dim=crop_dim)
+                                         translation=translation)
         self.base_model = get_base_model(base_model)
         self.pooling = keras.layers.GlobalMaxPooling2D()
         self.custom_layers = keras.Sequential([
@@ -104,8 +117,9 @@ class LichenClassifier(keras.Model):
         self.output_layer = keras.layers.Dense(
             num_classes, activation='softmax', dtype='float32')
 
-    def call(self, inputs, training: bool = False):
+    def call(self, inputs, training: bool):
         x = self.preprocessing_layer(inputs)
+        x = self.common_preprocessing(x)
         x = self.augmentation(x, training=training)
         x = self.base_model(x, training=training)
         x = self.pooling(x)
@@ -124,14 +138,17 @@ class LichenClassifier(keras.Model):
                 layer.trainable = False
 
 
-def get_optimizer(name: str,
-                  lr: float,
-                  schedule: str,
-                  decay_steps: int,
-                  decay_rate: float,
-                  use_schedule: bool,
-                  staircase: bool,
-                  **kwargs) -> optimizers.Optimizer:
+def get_optimizer(name: str = 'adam',
+                  lr: float = 1e-3,
+                  schedule: str = 'exponential',
+                  decay_steps: int = 1000,
+                  first_decay_steps: int = 10000,
+                  decay_rate: float = 0.9,
+                  use_schedule: bool = True,
+                  staircase: bool = True,
+                  t_mul: float = 1.0,
+                  m_mul: float = 1.0,
+                  alpha: float = 0.0) -> optimizers.Optimizer:
     if use_schedule:
         if schedule == 'exponential':
             lr_schedule = optimizers.schedules.ExponentialDecay(initial_learning_rate=lr,
@@ -140,7 +157,10 @@ def get_optimizer(name: str,
                                                                 staircase=staircase)
         elif schedule == 'cosine':
             lr_schedule = optimizers.schedules.CosineDecayRestarts(initial_learning_rate=lr,
-                                                                   first_decay_steps=decay_steps)
+                                                                   first_decay_steps=first_decay_steps,
+                                                                   t_mul=t_mul,
+                                                                   m_mul=m_mul,
+                                                                   alpha=alpha)
         else:
             raise ValueError(
                 "Invalid schedule type. Choose from 'exponential' or 'cosine'.")
@@ -150,4 +170,4 @@ def get_optimizer(name: str,
     if name.lower() not in OPT_DICT:
         raise ValueError(
             f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
-    return OPT_DICT[name](learning_rate=lr_schedule, **kwargs)
+    return OPT_DICT[name](learning_rate=lr_schedule)

@@ -4,14 +4,17 @@ from dataclasses import dataclass
 
 @dataclass
 class Config:
-    trial_num: int = 1
     base_path: Path = Path('/Users/Elise/Code/esfeld/lichen_classifier')
+
+    trial_num: int = 1
     seed: int = 1113
     download: bool = False
-    plot_imgs: bool = False
+    plot_imgs: bool = True
     plot_obs: bool = True
     mixed_precision: bool = True
     use_schedule: bool = True
+    fine_tune: bool = False
+    smoothing: float = 0.05
 
     val_test_split: float = 0.15
     topk: int = 2
@@ -28,15 +31,23 @@ class Config:
     epochs: int = 100
     patience: int = 5
 
-    base_model: str = 'EfficientNetV2B0'  # ResNet50 or EfficientNetV2B0
+    base_model: str = 'ResNet50'  # ResNet50 or EfficientNetV2B0 ***
     frozen_layers: int = 50
     optimizer: str = 'adam'
+
+    schedule_type: str = 'cosine'
     coarse_learning_rate: float = 5e-4
     fine_learning_rate: float = 1e-5
-    decay_steps: int = 30000
+    
+    # exponential
     decay_rate: float = 0.95
-    schedule_type: str = 'exponential'
-    smoothing: float = 0.05
+    decay_steps: int = 30000
+
+    # cosine
+    first_decay_steps: int = 10000
+    t_mul: float = 2.0 # default 
+    m_mul: float = 1.0 # default 
+    alpha: float = 0.0 # default 
 
     def __post_init__(self):
         self.data_dir = self.base_path / 'data'

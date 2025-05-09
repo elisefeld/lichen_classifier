@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     # Read and concatenate CSV files
     df = pd.concat([pd.read_csv(path) for path in paths], ignore_index=True)
-
+    print(df.columns)
     # Clean and transform data
     df['filename'] = df['uuid'].apply(lambda x: str(x) + '_full.jpg')
     df['large_image_url'] = df['image_url'].str.replace(
@@ -37,6 +37,23 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     df['time_observed_at_minute'] = df['time_observed_at_dt'].dt.minute
     df['time_observed_at_second'] = df['time_observed_at_dt'].dt.second
 
+    morphology_dict = {
+    'Xanthomendoza': 'foliose',
+    'Xanthoria': 'foliose',
+    'Vulpicida': 'foliose',
+    'Usnea': 'fruticose',
+    'Umbilicaria': 'foliose',
+    'Teloschistes': 'fruticose',
+    'Rusavskia': 'foliose',
+    'Rhizoplaca': 'foliose',
+    'Punctelia': 'foliose',
+    'Porpidia': 'crustose',
+    'Platismatia': 'foliose',
+    'Pilophorus': 'fruticose',
+    'Physcia': 'foliose',
+}
+    df['morphology'] = df['genus'].map(morphology_dict)
+    
     duplicate_uuids = df[df.duplicated('uuid', keep=False)]
     if not duplicate_uuids.empty:
         logger.info("Found duplicate UUIDs:\n%s",
@@ -44,15 +61,13 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     df = df.drop_duplicates(subset='uuid', keep='first')
     
     logger.info("Null values:\n%s", df.isnull().sum())
-    # df = df.dropna(axis='rows', how='any')
     return df
 
 
-def save_counts(df: pd.DataFrame, counts_dir: Path = cfg.data_dir) -> None:
-    counts_dir.mkdir(parents=True, exist_ok=True)
+def save_counts(df: pd.DataFrame) -> None:
     for var in ['scientific_name', 'genus']:
         df[var].value_counts().to_csv(
-            counts_dir / f'{var}_counts.csv', sep='\t')
+            cfg.counts_dir / f'{var}_counts.csv', sep='\t')
 
 
 def load_img_dataset(path: Path, batch_size: int = cfg.batch_size, dim: int = cfg.dim) -> tf.data.Dataset:
@@ -78,3 +93,5 @@ def get_class_info(ds: tf.data.Dataset) -> tuple:
             classes=np.unique(y_train),
             y=y_train)))
     return class_names, num_classes, class_weights
+
+

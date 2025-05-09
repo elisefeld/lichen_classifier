@@ -97,7 +97,7 @@ if failed_uuids and len(failed_uuids) > 0:
 # Saving cleaned results
 data.save_counts(df, cfg.data_dir)
 location = df[['filename', 'latitude', 'longitude']].copy()
-location.to_csv(cfg.data_dir / 'location.csv', sep='\t', index=False)
+location.to_csv(cfg.location_dir / 'location.csv', sep='\t', index=False)
 df.to_csv(cfg.data_dir / 'obs_data_cleaned.csv', sep='\t', index=False)
 
 

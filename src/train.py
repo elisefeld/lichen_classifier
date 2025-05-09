@@ -3,7 +3,7 @@ from tensorflow import keras
 from tensorflow.keras import mixed_precision
 
 from utils.data import load_img_dataset, get_class_info
-from utils.plotting import plot_rgb_histograms
+from utils.plotting import plot_rgb_histograms, visualize_model
 from modeling.cnn_model import LichenClassifier, get_optimizer
 from modeling.evaluate import train_and_evaluate
 
@@ -43,14 +43,14 @@ model = LichenClassifier(rotation=cfg.rotation_factor,
                          base_model=cfg.base_model,
                          num_classes=num_classes)
 
+visualize_model(model)
+
 # Stage 1: Train the model with frozen base model (coarse training)
 optimizer = get_optimizer(name=cfg.optimizer,
                           lr=cfg.coarse_learning_rate,
                           use_schedule=cfg.use_schedule,
                           schedule=cfg.schedule_type,
-                          decay_steps=cfg.decay_steps,
-                          decay_rate=cfg.decay_rate,
-                          staircase=True)
+                          first_decay_steps=cfg.first_decay_steps)
 coarse_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                   patience=cfg.patience,
                                                   restore_best_weights=True),
@@ -64,35 +64,32 @@ coarse_history = train_and_evaluate(model=model,
                                     test_ds=test_ds,
                                     optimizer=optimizer,
                                     callbacks=coarse_callbacks,
-                                    class_names=class_names,
                                     class_weights=class_weights,
                                     type='coarse',
                                     trial=cfg.trial_num)
 
 # Stage 2: Train the model with unfrozen base model (fine-tuning)
-fine_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                patience=cfg.patience,
-                                                restore_best_weights=True),
-                  keras.callbacks.ModelCheckpoint(cfg.model_dir/f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
-                                                  save_best_only=True)]
+if cfg.fine_tune:
+    fine_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
+                                                    patience=cfg.patience,
+                                                    restore_best_weights=True),
+                    keras.callbacks.ModelCheckpoint(cfg.model_dir/f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
+                                                    save_best_only=True)]
 
-optimizer = get_optimizer(name=cfg.optimizer,
-                          lr=cfg.fine_learning_rate,
-                          use_schedule=cfg.use_schedule,
-                          schedule=cfg.schedule_type,
-                          decay_steps=cfg.decay_steps,
-                          decay_rate=cfg.decay_rate,
-                          staircase=True)
+    optimizer = get_optimizer(name=cfg.optimizer,
+                             lr=cfg.fine_learning_rate,
+                             use_schedule=cfg.use_schedule,
+                             schedule=cfg.schedule_type,
+                             first_decay_steps=cfg.first_decay_steps)
 
-model.unfreeze_base_model(cfg.frozen_layers)
+    model.unfreeze_base_model(cfg.frozen_layers)
 
-fine_history = train_and_evaluate(model=model,
-                                  train_ds=train_ds,
-                                  val_ds=val_ds,
-                                  test_ds=test_ds,
-                                  optimizer=optimizer,
-                                  callbacks=fine_callbacks,
-                                  class_names=class_names,
-                                  class_weights=class_weights,
-                                  type='fine_tune',
-                                  trial=cfg.trial_num)
+    fine_history = train_and_evaluate(model=model,
+                                    train_ds=train_ds,
+                                    val_ds=val_ds,
+                                    test_ds=test_ds,
+                                    optimizer=optimizer,
+                                    callbacks=fine_callbacks,
+                                    class_weights=class_weights,
+                                    type='fine_tune',
+                                    trial=cfg.trial_num)
