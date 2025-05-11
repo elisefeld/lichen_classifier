@@ -12,22 +12,13 @@ cfg = Config()
 tf.random.set_seed(cfg.seed)
 
 # Dictionaries
-PREPROCESS_MAP = {
-    'ResNet50': resnet_preprocess,
-    'ResNet50V2': resnet_preprocess,
-    'ResNet101': resnet_preprocess,
-    'ResNet152': resnet_preprocess,
-    'EfficientNetB0': efficientnet_preprocess,
-    'EfficientNetV2B0': efficientnet_preprocess
-}
-
-MODEL_DICT = {
-    'ResNet50': ResNet50,
-    'ResNet50V2': ResNet50V2,
-    'ResNet101': ResNet101,
-    'ResNet152': ResNet152,
-    'EfficientNetB0': EfficientNetB0,
-    'EfficientNetV2B0': EfficientNetV2B0
+MODEL_MAP = {
+    'ResNet50': {'model': ResNet50, 'preprocess': resnet_preprocess},
+    'ResNet50V2': {'model': ResNet50V2, 'preprocess': resnet_preprocess},
+    'ResNet101': {'model': ResNet101, 'preprocess': resnet_preprocess},
+    'ResNet152': {'model': ResNet152, 'preprocess': resnet_preprocess},
+    'EfficientNetB0': {'model': EfficientNetB0, 'preprocess': efficientnet_preprocess},
+    'EfficientNetV2B0': {'model': EfficientNetV2B0, 'preprocess': efficientnet_preprocess}
 }
 
 OPT_DICT = {
@@ -39,14 +30,14 @@ OPT_DICT = {
     'nadam': optimizers.Nadam
 }
 
+
 ### Functions ###
-
-
 def get_base_model(model_name: str) -> keras.Model:
-    if model_name not in MODEL_DICT:
+    if model_name not in MODEL_MAP:
         raise ValueError(f'Invalid model name: {model_name}. '
-                         f'Choose from {list(MODEL_DICT.keys())}.')
-    return MODEL_DICT[model_name](include_top=False, weights='imagenet', input_shape=cfg.input_shape)
+                         f'Choose from {list(MODEL_MAP.keys())}.')
+    model_class = MODEL_MAP[model_name]['model']
+    return model_class(include_top=False, weights='imagenet', input_shape=cfg.input_shape)
 
 
 class CommonPreprocessing(keras.layers.Layer):
@@ -62,25 +53,54 @@ class CommonPreprocessing(keras.layers.Layer):
 
     def call(self, inputs):
         return self.common_preprocess(inputs)
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], self.crop_dim, self.crop_dim, input_shape[-1])
 
 
 class AugmentLayer(keras.layers.Layer):
     def __init__(self,
                  rotation: float,
                  contrast: float,
-                 translation: float):
+                 translation: float,
+                 name='augmentation'):
         '''A custom Keras layer for applying data augmentation to input images.'''
-        super().__init__()
+        super().__init__(name=name)
         self.augment = keras.Sequential([
             keras.layers.RandomFlip('horizontal'),
             keras.layers.RandomRotation(rotation),
             keras.layers.RandomContrast(contrast),
             keras.layers.RandomTranslation(translation, translation)
-        ])
+        ], name='augmentation_pipeline')
+
+    def build(self, input_shape):
+        self.input_shape = input_shape
+        super().build(input_shape)
 
     def call(self, inputs, training: bool):
         return self.augment(inputs, training=training) if training else inputs
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
+
+class DenseBlock(keras.layers.Layer):
+    def __init__(self, name='dense_block'):
+        super().__init__(name=name)
+        self.block = keras.Sequential([keras.layers.Dense(1024, activation='selu',
+                                                          kernel_initializer='lecun_normal'),
+                                       keras.layers.BatchNormalization(),
+                                       keras.layers.Dropout(0.3),
+                                       keras.layers.Dense(512, activation='selu',
+                                                          kernel_initializer='lecun_normal'),
+                                       keras.layers.BatchNormalization(),
+                                       keras.layers.Dropout(0.2),
+                                       keras.layers.Dense(128, activation='selu',
+                                                          kernel_initializer='lecun_normal'),
+                                       keras.layers.BatchNormalization(),
+                                       keras.layers.Dropout(0.1)], name='dense_pipeline')
+    def call(self, inputs, training:bool=False):
+        return self.block(inputs, training=training)
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], 128)
 
 class LichenClassifier(keras.Model):
     def __init__(self,
@@ -92,30 +112,17 @@ class LichenClassifier(keras.Model):
                  base_model: str,
                  num_classes: int):
         super().__init__()
-        self.preprocessing_layer = keras.layers.Lambda(
-            PREPROCESS_MAP[base_model])
+        self.base_model = get_base_model(base_model)
+        preprocess_function = MODEL_MAP[base_model]['preprocess']
+        self.preprocessing_layer = keras.layers.Lambda(preprocess_function)
         self.common_preprocessing = CommonPreprocessing(
             dim=dim, crop_dim=crop_dim)
         self.augmentation = AugmentLayer(rotation=rotation, contrast=contrast,
                                          translation=translation)
-        self.base_model = get_base_model(base_model)
-        self.pooling = keras.layers.GlobalMaxPooling2D()
-        self.custom_layers = keras.Sequential([
-            keras.layers.Dense(1024, activation='selu',
-                               kernel_initializer='lecun_normal'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.3),
-            keras.layers.Dense(512, activation='selu',
-                               kernel_initializer='lecun_normal'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(128, activation='selu',
-                               kernel_initializer='lecun_normal'),
-            keras.layers.BatchNormalization(),
-            keras.layers.Dropout(0.1)
-        ])
+        self.pooling = keras.layers.GlobalMaxPooling2D(name='global_max_pooling')
+        self.custom_layers = DenseBlock()
         self.output_layer = keras.layers.Dense(
-            num_classes, activation='softmax', dtype='float32')
+            num_classes, activation='softmax', dtype='float32', name='output_layer')
 
     def call(self, inputs, training: bool):
         x = self.preprocessing_layer(inputs)
@@ -149,6 +156,11 @@ def get_optimizer(name: str = 'adam',
                   t_mul: float = 1.0,
                   m_mul: float = 1.0,
                   alpha: float = 0.0) -> optimizers.Optimizer:
+
+    if name.lower() not in OPT_DICT:
+        raise ValueError(
+            f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
+
     if use_schedule:
         if schedule == 'exponential':
             lr_schedule = optimizers.schedules.ExponentialDecay(initial_learning_rate=lr,
@@ -163,11 +175,8 @@ def get_optimizer(name: str = 'adam',
                                                                    alpha=alpha)
         else:
             raise ValueError(
-                "Invalid schedule type. Choose from 'exponential' or 'cosine'.")
+                "Invalid schedule type. Choose from 'exponential' or 'cosine'")
     else:
         lr_schedule = lr
 
-    if name.lower() not in OPT_DICT:
-        raise ValueError(
-            f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
     return OPT_DICT[name](learning_rate=lr_schedule)

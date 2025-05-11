@@ -35,6 +35,7 @@ test_ds = test_ds.cache().prefetch(tf.data.AUTOTUNE)
 
 
 # Initialize Model
+
 model = LichenClassifier(rotation=cfg.rotation_factor,
                          contrast=cfg.contrast_factor,
                          translation=cfg.translation_factor,
@@ -42,6 +43,10 @@ model = LichenClassifier(rotation=cfg.rotation_factor,
                          crop_dim=cfg.crop_dim,
                          base_model=cfg.base_model,
                          num_classes=num_classes)
+
+dummy_input = tf.keras.Input(shape=(224, 224, 3))
+_ = model(dummy_input, training=False)
+model.summary()
 
 visualize_model(model)
 
@@ -65,7 +70,7 @@ coarse_history = train_and_evaluate(model=model,
                                     optimizer=optimizer,
                                     callbacks=coarse_callbacks,
                                     class_weights=class_weights,
-                                    type='coarse',
+                                    test_type='coarse',
                                     trial=cfg.trial_num)
 
 # Stage 2: Train the model with unfrozen base model (fine-tuning)
@@ -91,5 +96,5 @@ if cfg.fine_tune:
                                     optimizer=optimizer,
                                     callbacks=fine_callbacks,
                                     class_weights=class_weights,
-                                    type='fine_tune',
+                                    test_type='fine_tune',
                                     trial=cfg.trial_num)

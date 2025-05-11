@@ -3,7 +3,8 @@ from utils import data, scraping, plotting
 from config import Config
 cfg = Config()
 
-logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(level=cfg.log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +35,7 @@ keep_cols = ['uuid',
 df = df[keep_cols].copy()
 df.sort_values(by=['scientific_name'], ascending=False, inplace=True)
 logger.info(df.head())
+logger.info("Number of unique genus values: %d", df['genus'].nunique())
 
 # Plotting
 to_filter = True
@@ -43,7 +45,6 @@ plotting.plot_time(df, column='observed_on_day', type='Day')
 plotting.plot_time(df, column='observed_on_month', type='Month')
 plotting.plot_time(df, column='observed_on_year', type='Year')
 
-logger.info("Number of unique genus values: %d", df['genus'].nunique())
 plotting.plot_location(df, filter=to_filter, facet=False)
 plotting.plot_location(df, filter=to_filter, facet=True)
 
@@ -95,9 +96,14 @@ if failed_uuids and len(failed_uuids) > 0:
     df = df[~df['uuid'].isin(failed_uuids)].reset_index(drop=True)
 
 # Saving cleaned results
-data.save_counts(df, cfg.data_dir)
-location = df[['filename', 'latitude', 'longitude']].copy()
-location.to_csv(cfg.location_dir / 'location.csv', sep='\t', index=False)
+if cfg.save_counts:
+    data.save_counts(df, col='scientific_name')
+    data.save_counts(df, col='genus')
+
+if cfg.save_location:
+    path = cfg.get_file_name(cfg.location_dir, 'location', 'csv')
+    df[['filename', 'latitude', 'longitude']].copy().to_csv(path, sep='\t', index=False)
+
 df.to_csv(cfg.data_dir / 'obs_data_cleaned.csv', sep='\t', index=False)
 
 

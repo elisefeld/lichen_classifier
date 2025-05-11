@@ -7,21 +7,22 @@ import numpy as np
 import tensorflow as tf
 from sklearn.utils import class_weight
 
-from config import Config 
+from config import Config
 cfg = Config()
 
 # Set random seeds
 np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=cfg.log_level)
 logger = logging.getLogger(__name__)
 
 ### Functions ###
-def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
+def load_and_clean_obs_data(paths: list[Path]=cfg.data_paths) -> pd.DataFrame:
     # Read and concatenate CSV files
     df = pd.concat([pd.read_csv(path) for path in paths], ignore_index=True)
     print(df.columns)
+
     # Clean and transform data
     df['filename'] = df['uuid'].apply(lambda x: str(x) + '_full.jpg')
     df['large_image_url'] = df['image_url'].str.replace(
@@ -38,36 +39,38 @@ def load_and_clean_obs_data(paths: list[Path]) -> pd.DataFrame:
     df['time_observed_at_second'] = df['time_observed_at_dt'].dt.second
 
     morphology_dict = {
-    'Xanthomendoza': 'foliose',
-    'Xanthoria': 'foliose',
-    'Vulpicida': 'foliose',
-    'Usnea': 'fruticose',
-    'Umbilicaria': 'foliose',
-    'Teloschistes': 'fruticose',
-    'Rusavskia': 'foliose',
-    'Rhizoplaca': 'foliose',
-    'Punctelia': 'foliose',
-    'Porpidia': 'crustose',
-    'Platismatia': 'foliose',
-    'Pilophorus': 'fruticose',
-    'Physcia': 'foliose',
-}
+        'Xanthomendoza': 'foliose',
+        'Xanthoria': 'foliose',
+        'Vulpicida': 'foliose',
+        'Usnea': 'fruticose',
+        'Umbilicaria': 'foliose',
+        'Teloschistes': 'fruticose',
+        'Rusavskia': 'foliose',
+        'Rhizoplaca': 'foliose',
+        'Punctelia': 'foliose',
+        'Porpidia': 'crustose',
+        'Platismatia': 'foliose',
+        'Pilophorus': 'fruticose',
+        'Physcia': 'foliose',
+    }
     df['morphology'] = df['genus'].map(morphology_dict)
-    
+
+    # Remove duplicates
     duplicate_uuids = df[df.duplicated('uuid', keep=False)]
     if not duplicate_uuids.empty:
         logger.info("Found duplicate UUIDs:\n%s",
                     duplicate_uuids.sort_values('uuid'))
     df = df.drop_duplicates(subset='uuid', keep='first')
-    
+
     logger.info("Null values:\n%s", df.isnull().sum())
     return df
 
 
-def save_counts(df: pd.DataFrame) -> None:
-    for var in ['scientific_name', 'genus']:
-        df[var].value_counts().to_csv(
-            cfg.counts_dir / f'{var}_counts.csv', sep='\t')
+def save_counts(df: pd.DataFrame, col: str = 'genus') -> None:
+    path = cfg.get_file_name(cfg.counts_dir, f'{col}_counts', 'csv')
+    if col not in df.columns:
+        raise ValueError(f"Column '{col}' not found in DataFrame.")
+    df[col].value_counts().to_csv(path, sep='\t')
 
 
 def load_img_dataset(path: Path, batch_size: int = cfg.batch_size, dim: int = cfg.dim) -> tf.data.Dataset:
@@ -93,5 +96,3 @@ def get_class_info(ds: tf.data.Dataset) -> tuple:
             classes=np.unique(y_train),
             y=y_train)))
     return class_names, num_classes, class_weights
-
-

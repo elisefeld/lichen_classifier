@@ -1,4 +1,3 @@
-from config import Config
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,10 +9,10 @@ from tensorflow.keras.metrics import top_k_categorical_accuracy
 import seaborn as sns
 import json
 
-
 plt.style.use('seaborn-v0_8-colorblind')
 sns.set_theme(context='talk', style='white')
 
+from config import Config
 cfg = Config()
 
 # Set random seeds
@@ -21,8 +20,6 @@ np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
 ### Functions ###
-
-
 def train_and_evaluate(model: keras.Model,
                        train_ds: tf.data.Dataset,
                        val_ds: tf.data.Dataset,
@@ -51,24 +48,23 @@ def train_and_evaluate(model: keras.Model,
     )
     results = model.evaluate(test_ds, return_dict=True)
 
-    with open(cfg.training_history_dir / f"test_metrics_trial_{trial}_{test_type}.json", "w") as f:
+    path = cfg.get_file_name(dir=cfg.training_history_dir, file_type='results', ext='json', test_type=test_type)
+    with open(path, "w") as f:
         json.dump(results, f, indent=4)
 
     evaluator = ModelEvaluator(
         model, test_ds, trial=trial, test_type=test_type)
 
+    evaluator.save_history(history)
+    evaluator.save_class_metrics()
     evaluator.plot_history(history)
     evaluator.plot_confusion_matrix()
-    evaluator.plot_class_metrics()
-    evaluator.save_history(history, cfg.training_history_dir /
-                           f"history_trial_{trial}_{test_type}.json")
     evaluator.visualize_predictions()
-
     return history
 
 
 class ModelEvaluator:
-    def __init__(self, model, test_ds, trial: int = None, results_dir: Path = cfg.results_dir, test_type: str = 'test'):
+    def __init__(self, model, test_ds, test_type: str = None, trial: int = None, results_dir: Path = cfg.results_dir):
         self.model = model
         self.test_ds = test_ds
         self.test_classes = cfg.test_classes
@@ -86,75 +82,66 @@ class ModelEvaluator:
                                           for _, labels in self.test_ds])
         return self.y_true, self.y_pred
 
-    def plot_history(self, history):
-        file_name = f'training_history_trial_{cfg.trial_num}_{self.test_type}.png'
+    def save_history(self, history):
+        path = cfg.get_file_name(cfg.training_history_dir, 'training_history', 'json', test_type=self.test_type)
+        history_dict = history.history
+        with open(path, 'w') as f:
+            json.dump(history_dict, f, indent=4)
 
-        acc = history.history['accuracy']
-        val_acc = history.history['val_accuracy']
-        loss = history.history['loss']
-        val_loss = history.history['val_loss']
-        top_k_acc = history.history.get('top_k_categorical_accuracy', None)
-        val_top_k_acc = history.history.get(
-            'val_top_k_categorical_accuracy', None)
-        epochs = range(1, len(acc) + 1)
-
-        n_subplots = 3 if top_k_acc and val_top_k_acc else 2
-        fig, axs = plt.subplots(1, n_subplots, figsize=(6*n_subplots, 5))
-
-        axs[0].plot(epochs, acc, 'r', label='Training')
-        axs[0].plot(epochs, val_acc, 'b', label='Validation')
-        axs[0].set_title('Model Accuracy')
-        axs[0].grid(True)
-        axs[0].legend()
-
-        axs[1].plot(epochs, loss, 'r', label='Training')
-        axs[1].plot(epochs, val_loss, 'b', label='Validation')
-        axs[1].set_title('Model Loss')
-        axs[1].grid(True)
-        axs[1].legend()
-
-        if n_subplots == 3:
-            axs[2].plot(epochs, top_k_acc, 'r', label='Training')
-            axs[2].plot(epochs, val_top_k_acc, 'b',
-                        label='Validation')
-            axs[2].set_title(f'Model top-k Accuracy (k={cfg.topk})')
-            axs[2].grid(True)
-            axs[2].legend()
-
-        plt.tight_layout()
-        plt.savefig(cfg.training_history_dir / file_name, bbox_inches="tight")
-        plt.close()
-
-    def plot_confusion_matrix(self):
-        file_name = f'confusion_matrix_trial_{cfg.trial_num}_{self.test_type}.png'
-
-        y_true, y_pred = self.get_true_pred_vals()
-
-        cm = confusion_matrix(y_true, y_pred, labels=range(len(self.test_classes)))
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=self.test_classes)
-        disp.plot(xticks_rotation=45)
-
-        plt.title('Confusion Matrix')
-        plt.tight_layout()
-        plt.savefig(cfg.confusion_matrix_dir / file_name, bbox_inches="tight")
-        plt.close()
-
-    def plot_class_metrics(self):
-        file_name = f'class_metrics_trial_{cfg.trial_num}_{self.test_type}.csv'
+    def save_class_metrics(self):
+        path = cfg.get_file_name(cfg.class_metrics_dir, 'class_metrics', 'csv', test_type=self.test_type)
         y_true, y_pred = self.get_true_pred_vals()
         report = classification_report(
             y_true, y_pred, target_names=self.test_classes, output_dict=True)
         print("Classification Report:", report)
         report_df = pd.DataFrame(report).transpose()
-        report_df.to_csv(cfg.class_metrics_dir / file_name, sep='\t')
+        report_df.to_csv(path, sep='\t')
 
-    def save_history(self, history, history_file: Path):
-        history_dict = history.history
-        with open(history_file, 'w') as f:
-            json.dump(history_dict, f, indent=4)
+
+    def plot_history(self, history):
+        path = cfg.get_file_name(cfg.training_history_dir, 'training_history', 'png', test_type=self.test_type)
+        metric = 'accuracy'
+        val_metric = f'val_{metric}'
+        if metric not in history.history or val_metric not in history.history:
+                print(f"Metric '{metric}' or '{val_metric}' not found in history.")
+                return
+        plt.plot(history.history[metric], label=f'Train {metric}')
+        plt.plot(history.history[val_metric], label=f'Validation {metric}')
+        plt.xlabel('Epochs')
+        plt.ylabel(metric.capitalize())
+        plt.legend()
+        plt.title(f'Training and Validation {metric.capitalize()}')
+        plt.tight_layout()
+        plt.savefig(path, bbox_inches="tight")
+        plt.close()
+
+
+    def plot_confusion_matrix(self):
+        path = cfg.get_file_name(cfg.confusion_matrix_dir, 'confusion_matrix', 'png', test_type=self.test_type)
+
+        y_true, y_pred = self.get_true_pred_vals()
+
+        cm = confusion_matrix(y_true, y_pred, labels=range(len(self.test_classes)))
+        plt.figure(figsize=(10, 10))
+    
+        sns.heatmap(
+            cm,
+            annot=True,
+            xticklabels=self.test_classes,
+            yticklabels=self.test_classes,
+            annot_kws={"size": 8, "color": "black"},
+            linewidths=0.5,
+            cbar_kws={"label": "Count"}
+        )
+        plt.title('Confusion Matrix')
+        plt.tight_layout()
+        plt.savefig(path, bbox_inches="tight")
+        plt.close()
+
 
     def visualize_predictions(self, num_images=5):
-        # Take a batch from the dataset
+        path = cfg.get_file_name(cfg.confusion_matrix_dir, 'predictions', 'png', test_type=self.test_type)
+
         for batch_images, batch_labels in self.test_ds.take(1):
             probs = self.model.predict(batch_images)
             top3_preds = tf.math.top_k(probs, k=3)
@@ -191,6 +178,5 @@ class ModelEvaluator:
                 ax.set_title(title, color=title_color, fontsize=10, loc='left')
 
             plt.tight_layout()
-            plt.savefig(cfg.confusion_matrix_dir /
-                        f'predictions_trial_{cfg.trial_num}_{self.test_type}.png', bbox_inches="tight")
+            plt.savefig(path, bbox_inches="tight")
             break  # Only one batch
