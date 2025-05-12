@@ -20,8 +20,6 @@ np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
 ### Functions ###
-
-
 def train_and_evaluate(model: keras.Model,
                        train_ds: tf.data.Dataset,
                        val_ds: tf.data.Dataset,
@@ -38,6 +36,15 @@ def train_and_evaluate(model: keras.Model,
         metrics=[*cfg.metrics]
     )
 
+    if test_type == 'coarse':
+        for layer in model.get_layer("base_model").layers:
+            layer.trainable = False
+        print("Training with frozen base model...")
+    elif test_type == 'fine':
+        for layer in model.get_layer("base_model").layers[-cfg.frozen_layers:]:
+            layer.trainable = True
+        print("Training with unfrozen base model...")
+    
     # Print model summary
     model.summary()
 
@@ -108,8 +115,9 @@ class ModelEvaluator:
         path = cfg.get_file_name(
             cfg.training_history_dir, 'training_history', 'png', test_type=self.test_type)
         
-        metrics = list(cfg.metrics) + ['loss']
-        val_metrics = [f'val_{metric}' for metric in metrics]
+        metrics = [m.name if not isinstance(m, str) else m for m in cfg.metrics] + ['loss']
+        val_metrics = [f'val_{m}' for m in metrics]
+
 
         print(f"Available keys in history: {list(history.history.keys())}")
 
@@ -117,7 +125,7 @@ class ModelEvaluator:
         fig, axes = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 5))
 
         for i, (metric, val_metric) in enumerate(zip(metrics, val_metrics)):
-            ax = axes[i] if num_metrics > 1 else axes  # Handle single subplot case
+            ax = axes[i] if num_metrics > 1 else axes
 
             if metric not in history.history or val_metric not in history.history:
                 print(f"Metric '{metric}' or '{val_metric}' not found in history.")
@@ -183,7 +191,6 @@ class ModelEvaluator:
                 pred_labels = [self.test_classes[j] for j in top3_indices[i]]
                 confidences = top3_values[i]
 
-                # Compose title
                 correct = (top3_indices[i][0] == true_labels[i])
                 title_color = 'green' if correct else 'red'
                 title = f"True: {true_label}\n"
@@ -192,7 +199,6 @@ class ModelEvaluator:
                     conf = confidences[rank]
                     title += f"{rank+1}. {label} ({conf:.2%})\n"
 
-                # Plot
                 ax = plt.subplot(num_images, 1, i + 1)
                 plt.imshow(img)
                 plt.axis("off")
@@ -200,7 +206,7 @@ class ModelEvaluator:
 
             plt.tight_layout()
             plt.savefig(path, bbox_inches="tight")
-            break  # Only one batch
+            break
 
 
 def visualize_model(model, test_type: str = None):
@@ -209,7 +215,7 @@ def visualize_model(model, test_type: str = None):
                            show_shapes=True,
                            show_dtype=False,
                            show_layer_names=True,
-                           rankdir="TB",
+                           rankdir="LR",
                            expand_nested=False,
                            dpi=200,
                            show_layer_activations=True,

@@ -44,20 +44,23 @@ model = build_lichen_classifier(input_shape=(224, 224, 3),
                                 base_model_name=cfg.base_model,
                                 num_classes=num_classes)
 
+
 # Stage 1: Train the model with frozen base model (coarse training)
+test_type = 'coarse'
 optimizer = get_optimizer(name=cfg.optimizer,
                           lr=cfg.coarse_learning_rate,
                           use_schedule=cfg.use_schedule,
                           schedule=cfg.schedule_type,
                           first_decay_steps=cfg.first_decay_steps)
+
 coarse_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                   patience=cfg.patience,
                                                   restore_best_weights=True),
-                    keras.callbacks.ModelCheckpoint(cfg.model_dir / f'coarse_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
-                                                    save_best_only=True)] # FIX add set path here
-
-for layer in model.get_layer("base_model").layers:
-    layer.trainable = False
+                    keras.callbacks.ModelCheckpoint(cfg.get_file_name(dir=cfg.model_dir,
+                                                                      file_type=f'model_{cfg.base_model.lower()}_{cfg.optimizer.lower()}',
+                                                                      ext='keras',
+                                                                      test_type=test_type),
+                                                    save_best_only=True)]
 
 coarse_history = train_and_evaluate(model=model,
                                     train_ds=train_ds,
@@ -66,33 +69,34 @@ coarse_history = train_and_evaluate(model=model,
                                     optimizer=optimizer,
                                     callbacks=coarse_callbacks,
                                     class_weights=class_weights,
-                                    test_type='coarse',
+                                    test_type=test_type,
                                     trial=cfg.trial_num)
+
 
 # Stage 2: Train the model with unfrozen base model (fine-tuning)
 if cfg.fine_tune:
+    test_type = 'fine'
     fine_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                     patience=cfg.patience,
                                                     restore_best_weights=True),
-                    keras.callbacks.ModelCheckpoint(cfg.model_dir/f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
-                                                    save_best_only=True)] #FIX add set path here
+                      keras.callbacks.ModelCheckpoint(cfg.get_file_name(dir=cfg.model_dir,
+                                                                      file_type=f'model_{cfg.base_model.lower()}_{cfg.optimizer.lower()}',
+                                                                      ext='keras',
+                                                                      test_type=test_type),
+                                                    save_best_only=True)]
 
     optimizer = get_optimizer(name=cfg.optimizer,
-                             lr=cfg.fine_learning_rate,
-                             use_schedule=cfg.use_schedule,
-                             schedule=cfg.schedule_type,
-                             first_decay_steps=cfg.first_decay_steps)
-
-    unfreeze_layers = cfg.frozen_layers
-    for layer in model.get_layer("base_model").layers[-unfreeze_layers:]:
-        layer.trainable = True
+                              lr=cfg.fine_learning_rate,
+                              use_schedule=cfg.use_schedule,
+                              schedule=cfg.schedule_type,
+                              first_decay_steps=cfg.first_decay_steps)
 
     fine_history = train_and_evaluate(model=model,
-                                    train_ds=train_ds,
-                                    val_ds=val_ds,
-                                    test_ds=test_ds,
-                                    optimizer=optimizer,
-                                    callbacks=fine_callbacks,
-                                    class_weights=class_weights,
-                                    test_type='fine_tune',
-                                    trial=cfg.trial_num)
+                                      train_ds=train_ds,
+                                      val_ds=val_ds,
+                                      test_ds=test_ds,
+                                      optimizer=optimizer,
+                                      callbacks=fine_callbacks,
+                                      class_weights=class_weights,
+                                      test_type=test_type,
+                                      trial=cfg.trial_num)

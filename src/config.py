@@ -20,9 +20,9 @@ class Config:
 
     # General settings
     mixed_precision: bool = True
-    trial_num: int = 2
+    trial_num: int = 3
     run_name: str = field(init=False)
-    seed: int = 1113 # use fixed value for reproductibility, None for actually random number
+    seed: int = 1113 # FIX use fixed value for reproductibility, None for actually random number
     timestamp: str = field(default_factory=lambda: datetime.now().strftime('%Y%m%d_%H%M%S'))
 
     # Paths
@@ -55,7 +55,7 @@ class Config:
     use_schedule: bool = True
     schedule_type: str = 'cosine'
     coarse_learning_rate: float = 1e-5
-    fine_learning_rate: float = 1e-3
+    fine_learning_rate: float = 5e-6
     
     # exponential decay
     decay_rate: float = 0.95
@@ -80,7 +80,7 @@ class Config:
         self.data_paths = [
             self.data_dir / 'raw' / 'obs_data_post17.csv',
             self.data_dir / 'raw' / 'obs_data_pre17.csv'
-        ] #create a download from github for this or add the files
+        ] # FIX create a download from github for this or add the files
 
         # Subdirectories
         self.full_img_dir = self.image_dir / 'full'

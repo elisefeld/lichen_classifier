@@ -47,9 +47,7 @@ plotting.plot_time(df, column='observed_on_year', type='Year')
 plotting.plot_location(df, filter=to_filter, facet=False)
 plotting.plot_location(df, filter=to_filter, facet=True)
 
-#######################
-#### DOWNLOAD IMGS ####
-#######################
+# Download images
 filter_list = ['Xanthoria',
                'Xanthomendoza',
                'Vulpicida',
