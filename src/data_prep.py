@@ -3,7 +3,6 @@ from utils import data, scraping, plotting
 from config import Config
 cfg = Config()
 
-
 logging.basicConfig(level=cfg.log_level)
 logger = logging.getLogger(__name__)
 

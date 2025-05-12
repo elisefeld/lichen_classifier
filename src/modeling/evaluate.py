@@ -1,3 +1,4 @@
+from config import Config
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -5,14 +6,13 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.metrics import top_k_categorical_accuracy
+from tensorflow.keras.utils import plot_model
 import seaborn as sns
 import json
 
 plt.style.use('seaborn-v0_8-colorblind')
 sns.set_theme(context='talk', style='white')
 
-from config import Config
 cfg = Config()
 
 # Set random seeds
@@ -20,6 +20,8 @@ np.random.seed(cfg.seed)
 tf.random.set_seed(cfg.seed)
 
 ### Functions ###
+
+
 def train_and_evaluate(model: keras.Model,
                        train_ds: tf.data.Dataset,
                        val_ds: tf.data.Dataset,
@@ -33,11 +35,13 @@ def train_and_evaluate(model: keras.Model,
         loss=keras.losses.CategoricalCrossentropy(
             label_smoothing=cfg.smoothing),
         optimizer=optimizer,
-        metrics=['accuracy', keras.metrics.TopKCategoricalAccuracy(k=cfg.topk)]
+        metrics=[*cfg.metrics]
     )
 
     # Print model summary
     model.summary()
+
+    visualize_model(model, test_type=test_type) # FIX for fine tuning base model
 
     history = model.fit(
         train_ds,
@@ -48,7 +52,8 @@ def train_and_evaluate(model: keras.Model,
     )
     results = model.evaluate(test_ds, return_dict=True)
 
-    path = cfg.get_file_name(dir=cfg.training_history_dir, file_type='results', ext='json', test_type=test_type)
+    path = cfg.get_file_name(dir=cfg.training_history_dir,
+                             file_type='results', ext='json', test_type=test_type)
     with open(path, "w") as f:
         json.dump(results, f, indent=4)
 
@@ -83,13 +88,15 @@ class ModelEvaluator:
         return self.y_true, self.y_pred
 
     def save_history(self, history):
-        path = cfg.get_file_name(cfg.training_history_dir, 'training_history', 'json', test_type=self.test_type)
+        path = cfg.get_file_name(
+            cfg.training_history_dir, 'training_history', 'json', test_type=self.test_type)
         history_dict = history.history
         with open(path, 'w') as f:
             json.dump(history_dict, f, indent=4)
 
     def save_class_metrics(self):
-        path = cfg.get_file_name(cfg.class_metrics_dir, 'class_metrics', 'csv', test_type=self.test_type)
+        path = cfg.get_file_name(
+            cfg.class_metrics_dir, 'class_metrics', 'csv', test_type=self.test_type)
         y_true, y_pred = self.get_true_pred_vals()
         report = classification_report(
             y_true, y_pred, target_names=self.test_classes, output_dict=True)
@@ -97,33 +104,47 @@ class ModelEvaluator:
         report_df = pd.DataFrame(report).transpose()
         report_df.to_csv(path, sep='\t')
 
+    def plot_history(self, history): # FIX THIS!!!!!!!
+        path = cfg.get_file_name(
+            cfg.training_history_dir, 'training_history', 'png', test_type=self.test_type)
+        
+        metrics = list(cfg.metrics) + ['loss']
+        val_metrics = [f'val_{metric}' for metric in metrics]
 
-    def plot_history(self, history):
-        path = cfg.get_file_name(cfg.training_history_dir, 'training_history', 'png', test_type=self.test_type)
-        metric = 'accuracy'
-        val_metric = f'val_{metric}'
-        if metric not in history.history or val_metric not in history.history:
+        print(f"Available keys in history: {list(history.history.keys())}")
+
+        num_metrics = len(metrics)
+        fig, axes = plt.subplots(1, num_metrics, figsize=(6 * num_metrics, 5))
+
+        for i, (metric, val_metric) in enumerate(zip(metrics, val_metrics)):
+            ax = axes[i] if num_metrics > 1 else axes  # Handle single subplot case
+
+            if metric not in history.history or val_metric not in history.history:
                 print(f"Metric '{metric}' or '{val_metric}' not found in history.")
-                return
-        plt.plot(history.history[metric], label=f'Train {metric}')
-        plt.plot(history.history[val_metric], label=f'Validation {metric}')
-        plt.xlabel('Epochs')
-        plt.ylabel(metric.capitalize())
-        plt.legend()
-        plt.title(f'Training and Validation {metric.capitalize()}')
+                ax.set_title(f"Metric '{metric}' not found")
+                continue
+
+            ax.plot(history.history[metric], label=f'Train {metric}')
+            ax.plot(history.history[val_metric], label=f'Validation {metric}')
+            ax.set_xlabel('Epochs')
+            ax.set_ylabel(metric.capitalize())
+            ax.legend()
+            ax.set_title(f'Training and Validation {metric.capitalize()}')
+            
         plt.tight_layout()
         plt.savefig(path, bbox_inches="tight")
         plt.close()
 
-
     def plot_confusion_matrix(self):
-        path = cfg.get_file_name(cfg.confusion_matrix_dir, 'confusion_matrix', 'png', test_type=self.test_type)
+        path = cfg.get_file_name(
+            cfg.confusion_matrix_dir, 'confusion_matrix', 'png', test_type=self.test_type)
 
         y_true, y_pred = self.get_true_pred_vals()
 
-        cm = confusion_matrix(y_true, y_pred, labels=range(len(self.test_classes)))
+        cm = confusion_matrix(
+            y_true, y_pred, labels=range(len(self.test_classes)))
         plt.figure(figsize=(10, 10))
-    
+
         sns.heatmap(
             cm,
             annot=True,
@@ -138,9 +159,9 @@ class ModelEvaluator:
         plt.savefig(path, bbox_inches="tight")
         plt.close()
 
-
     def visualize_predictions(self, num_images=5):
-        path = cfg.get_file_name(cfg.confusion_matrix_dir, 'predictions', 'png', test_type=self.test_type)
+        path = cfg.get_file_name(
+            cfg.confusion_matrix_dir, 'predictions', 'png', test_type=self.test_type)
 
         for batch_images, batch_labels in self.test_ds.take(1):
             probs = self.model.predict(batch_images)
@@ -180,3 +201,17 @@ class ModelEvaluator:
             plt.tight_layout()
             plt.savefig(path, bbox_inches="tight")
             break  # Only one batch
+
+
+def visualize_model(model, test_type: str = None):
+    keras.utils.plot_model(model,
+                           to_file=f'model{test_type}.png',
+                           show_shapes=True,
+                           show_dtype=False,
+                           show_layer_names=True,
+                           rankdir="TB",
+                           expand_nested=False,
+                           dpi=200,
+                           show_layer_activations=True,
+                           show_trainable=True,
+                           )

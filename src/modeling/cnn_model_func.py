@@ -1,6 +1,33 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.applications import ResNet50, ResNet50V2, ResNet101, ResNet152, EfficientNetB0, EfficientNetV2B0
+from tensorflow.keras.applications.resnet import preprocess_input as resnet_preprocess
+from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
+from tensorflow.keras import optimizers
 
+from config import Config
+cfg = Config()
+
+tf.random.set_seed(cfg.seed)
+
+# Dictionaries
+MODEL_MAP = {
+    'ResNet50': {'model': ResNet50, 'preprocess': resnet_preprocess},
+    'ResNet50V2': {'model': ResNet50V2, 'preprocess': resnet_preprocess},
+    'ResNet101': {'model': ResNet101, 'preprocess': resnet_preprocess},
+    'ResNet152': {'model': ResNet152, 'preprocess': resnet_preprocess},
+    'EfficientNetB0': {'model': EfficientNetB0, 'preprocess': efficientnet_preprocess},
+    'EfficientNetV2B0': {'model': EfficientNetV2B0, 'preprocess': efficientnet_preprocess}
+}
+
+OPT_DICT = {
+    'adam': optimizers.Adam,
+    'sgd': optimizers.SGD,
+    'rmsprop': optimizers.RMSprop,
+    'adagrad': optimizers.Adagrad,
+    'adamax': optimizers.Adamax,
+    'nadam': optimizers.Nadam
+}
 
 def build_lichen_classifier(input_shape: tuple,
                              dim: int,
@@ -47,3 +74,40 @@ def build_lichen_classifier(input_shape: tuple,
 
     model = keras.Model(inputs=inputs, outputs=outputs, name='lichen_classifier')
     return model
+
+
+def get_optimizer(name: str = 'adam',
+                  lr: float = 1e-3,
+                  schedule: str = 'exponential',
+                  decay_steps: int = 1000,
+                  first_decay_steps: int = 10000,
+                  decay_rate: float = 0.9,
+                  use_schedule: bool = True,
+                  staircase: bool = True,
+                  t_mul: float = 1.0,
+                  m_mul: float = 1.0,
+                  alpha: float = 0.0) -> optimizers.Optimizer:
+
+    if name.lower() not in OPT_DICT:
+        raise ValueError(
+            f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
+
+    if use_schedule:
+        if schedule == 'exponential':
+            lr_schedule = optimizers.schedules.ExponentialDecay(initial_learning_rate=lr,
+                                                                decay_steps=decay_steps,
+                                                                decay_rate=decay_rate,
+                                                                staircase=staircase)
+        elif schedule == 'cosine':
+            lr_schedule = optimizers.schedules.CosineDecayRestarts(initial_learning_rate=lr,
+                                                                   first_decay_steps=first_decay_steps,
+                                                                   t_mul=t_mul,
+                                                                   m_mul=m_mul,
+                                                                   alpha=alpha)
+        else:
+            raise ValueError(
+                "Invalid schedule type. Choose from 'exponential' or 'cosine'")
+    else:
+        lr_schedule = lr
+
+    return OPT_DICT[name](learning_rate=lr_schedule)

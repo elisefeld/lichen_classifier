@@ -1,6 +1,9 @@
 from pathlib import Path
 from dataclasses import dataclass, field
 from datetime import datetime
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.keras.metrics import top_k_categorical_accuracy, CategoricalAccuracy
 
 @dataclass
 class Config:
@@ -17,9 +20,9 @@ class Config:
 
     # General settings
     mixed_precision: bool = True
-    trial_num: int = 1
+    trial_num: int = 2
     run_name: str = field(init=False)
-    seed: int = 1113
+    seed: int = 1113 # use fixed value for reproductibility, None for actually random number
     timestamp: str = field(default_factory=lambda: datetime.now().strftime('%Y%m%d_%H%M%S'))
 
     # Paths
@@ -31,13 +34,12 @@ class Config:
 
     # Training settings
     batch_size: int = 32
-    epochs: int = 1
-    patience: int = 1
+    epochs: int = 100
+    patience: int = 10
     optimizer: str = 'adam'
-    metrics: tuple = ('accuracy', 'top_k_categorical_accuracy')
     topk: int = 2
     smoothing: float = 0.05
-    fine_tune: bool = False
+    fine_tune: bool = True
     frozen_layers: int = 50
     base_model: str = 'ResNet50'  # ResNet50 or EfficientNetV2B0 ***
 
@@ -52,8 +54,8 @@ class Config:
     # Scheduling 
     use_schedule: bool = True
     schedule_type: str = 'cosine'
-    coarse_learning_rate: float = 1e-3
-    fine_learning_rate: float = 1e-5
+    coarse_learning_rate: float = 1e-5
+    fine_learning_rate: float = 1e-3
     
     # exponential decay
     decay_rate: float = 0.95
@@ -67,6 +69,7 @@ class Config:
 
     def __post_init__(self):
         self.run_name = f"trial{self.trial_num}_{self.base_model}_{self.schedule_type}_{self.timestamp}"
+        self.metrics = [keras.metrics.CategoricalAccuracy(name='categorical_accuracy'), keras.metrics.TopKCategoricalAccuracy(k=self.topk, name='top_k_categorical_accuracy')]
 
         # Main directories
         self.data_dir = self.base_path / 'data'

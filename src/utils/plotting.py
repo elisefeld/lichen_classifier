@@ -8,7 +8,7 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 from utils import data
 from tensorflow import keras
-from tensorflow.keras.utils import plot_model
+
 
 
 from config import Config
@@ -141,9 +141,3 @@ def plot_rgb_histograms(df: tf.data.Dataset, class_names: list, bins:int=256, co
     plt.close()
 
 
-def visualize_model(model: tf.keras.Model, input_shape: tuple = (224, 224, 3), save_path: str = "lichen_model.png"):
-    inputs = keras.Input(shape=input_shape)
-    outputs = model(inputs, training=False)
-    vis_model = keras.Model(inputs, outputs)
-
-    plot_model(vis_model, to_file=save_path, show_shapes=True, show_layer_names=True, expand_nested=True, dpi=100)

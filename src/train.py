@@ -3,8 +3,8 @@ from tensorflow import keras
 from tensorflow.keras import mixed_precision
 
 from utils.data import load_img_dataset, get_class_info
-from utils.plotting import plot_rgb_histograms, visualize_model
-from modeling.cnn_model import LichenClassifier, get_optimizer
+from utils.plotting import plot_rgb_histograms
+from modeling.cnn_model_func import build_lichen_classifier, get_optimizer
 from modeling.evaluate import train_and_evaluate
 
 from config import Config
@@ -35,20 +35,14 @@ test_ds = test_ds.cache().prefetch(tf.data.AUTOTUNE)
 
 
 # Initialize Model
-
-model = LichenClassifier(rotation=cfg.rotation_factor,
-                         contrast=cfg.contrast_factor,
-                         translation=cfg.translation_factor,
-                         dim=cfg.dim,
-                         crop_dim=cfg.crop_dim,
-                         base_model=cfg.base_model,
-                         num_classes=num_classes)
-
-dummy_input = tf.keras.Input(shape=(224, 224, 3))
-_ = model(dummy_input, training=False)
-model.summary()
-
-visualize_model(model)
+model = build_lichen_classifier(input_shape=(224, 224, 3),
+                                dim=cfg.dim,
+                                crop_dim=cfg.crop_dim,
+                                rotation=cfg.rotation_factor,
+                                contrast=cfg.contrast_factor,
+                                translation=cfg.translation_factor,
+                                base_model_name=cfg.base_model,
+                                num_classes=num_classes)
 
 # Stage 1: Train the model with frozen base model (coarse training)
 optimizer = get_optimizer(name=cfg.optimizer,
@@ -60,9 +54,11 @@ coarse_callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss',
                                                   patience=cfg.patience,
                                                   restore_best_weights=True),
                     keras.callbacks.ModelCheckpoint(cfg.model_dir / f'coarse_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
-                                                    save_best_only=True)]
+                                                    save_best_only=True)] # FIX add set path here
 
-model.freeze_base_model()
+for layer in model.get_layer("base_model").layers:
+    layer.trainable = False
+
 coarse_history = train_and_evaluate(model=model,
                                     train_ds=train_ds,
                                     val_ds=val_ds,
@@ -79,7 +75,7 @@ if cfg.fine_tune:
                                                     patience=cfg.patience,
                                                     restore_best_weights=True),
                     keras.callbacks.ModelCheckpoint(cfg.model_dir/f'fine_{cfg.base_model.lower()}_{cfg.optimizer.lower()}_trial_{cfg.trial_num}.keras',
-                                                    save_best_only=True)]
+                                                    save_best_only=True)] #FIX add set path here
 
     optimizer = get_optimizer(name=cfg.optimizer,
                              lr=cfg.fine_learning_rate,
@@ -87,7 +83,9 @@ if cfg.fine_tune:
                              schedule=cfg.schedule_type,
                              first_decay_steps=cfg.first_decay_steps)
 
-    model.unfreeze_base_model(cfg.frozen_layers)
+    unfreeze_layers = cfg.frozen_layers
+    for layer in model.get_layer("base_model").layers[-unfreeze_layers:]:
+        layer.trainable = True
 
     fine_history = train_and_evaluate(model=model,
                                     train_ds=train_ds,
