@@ -6,7 +6,6 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras.utils import plot_model
 import seaborn as sns
 import json
 
@@ -71,6 +70,7 @@ def train_and_evaluate(model: keras.Model,
     evaluator.save_class_metrics()
     evaluator.plot_history(history)
     evaluator.plot_confusion_matrix()
+    evaluator.plot_cm_2()
     evaluator.visualize_predictions()
     return history
 
@@ -167,6 +167,17 @@ class ModelEvaluator:
         plt.savefig(path, bbox_inches="tight")
         plt.close()
 
+    def plot_cm_2(self):
+            path = cfg.get_file_name(cfg.confusion_matrix_dir, 'confusion_matrix2', 'png', test_type=self.test_type)
+
+            y_true, y_pred = self.get_true_pred_vals()
+            #cm = confusion_matrix(y_true, y_pred, labels=range(len(self.test_classes)))
+            disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, labels=self.test_classes)
+            disp.plot(cmap=plt.cm.Blues, values_format='d')
+            plt.title('Confusion Matrix')
+            plt.savefig(path, bbox_inches="tight")
+            plt.close()
+
     def visualize_predictions(self, num_images=5):
         path = cfg.get_file_name(
             cfg.confusion_matrix_dir, 'predictions', 'png', test_type=self.test_type)
@@ -212,7 +223,7 @@ class ModelEvaluator:
 def visualize_model(model, test_type: str = None):
     keras.utils.plot_model(model,
                            to_file=f'model{test_type}.png',
-                           show_shapes=True,
+                           show_shapes=False,
                            show_dtype=False,
                            show_layer_names=True,
                            rankdir="LR",

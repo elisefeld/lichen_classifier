@@ -85,7 +85,7 @@ if cfg.fine_tune:
                                                                       test_type=test_type),
                                                     save_best_only=True)]
 
-    optimizer = get_optimizer(name=cfg.optimizer,
+    optimizer = get_optimizer(name=cfg.optimizer, 
                               lr=cfg.fine_learning_rate,
                               use_schedule=cfg.use_schedule,
                               schedule=cfg.schedule_type,
