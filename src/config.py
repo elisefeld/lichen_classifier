@@ -20,7 +20,7 @@ class Config:
 
     # General settings
     mixed_precision: bool = True
-    trial_num: int = 3
+    trial_num: int = 4
     run_name: str = field(init=False)
     seed: int = 1113 # FIX use fixed value for reproductibility, None for actually random number
     timestamp: str = field(default_factory=lambda: datetime.now().strftime('%Y%m%d_%H%M%S'))
@@ -34,7 +34,7 @@ class Config:
 
     # Training settings
     batch_size: int = 32
-    epochs: int = 100
+    epochs: int = 2 #100
     patience: int = 10
     optimizer: str = 'adam'
     topk: int = 2
@@ -90,9 +90,8 @@ class Config:
 
         self.counts_dir = self.data_dir / 'counts'
         self.location_dir = self.data_dir / 'location'
-        
-        self.training_history_dir = self.results_dir / 'training_history'
-        self.confusion_matrix_dir = self.results_dir / 'confusion_matrix'
+        self.training_data_dir = self.results_dir / 'training_data'
+        self.training_plots_dir = self.results_dir / 'training_plots'
         self.class_metrics_dir = self.results_dir / 'class_metrics'
         self.histograms_dir = self.results_dir / 'histograms'
         self.time_plots_dir = self.results_dir / 'time_plots'
@@ -107,8 +106,6 @@ class Config:
             self.train_dir,
             self.val_dir,
             self.test_dir,
-            self.training_history_dir,
-            self.confusion_matrix_dir,
             self.class_metrics_dir,
             self.histograms_dir,
             self.time_plots_dir,
