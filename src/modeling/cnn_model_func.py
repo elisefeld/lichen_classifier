@@ -4,9 +4,13 @@ from tensorflow.keras.applications import ResNet50, ResNet50V2, ResNet101, ResNe
 from tensorflow.keras.applications.resnet import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
 from tensorflow.keras import optimizers
+from tensorflow.keras import mixed_precision
 
 from config import Config
 cfg = Config()
+
+if cfg.mixed_precision:
+    mixed_precision.set_global_policy('mixed_float16')
 
 tf.random.set_seed(cfg.seed)
 
@@ -29,15 +33,24 @@ OPT_DICT = {
     'nadam': optimizers.Nadam
 }
 
+def get_augmentation_layers(dim, crop_dim, rotation, contrast, translation):
+    return keras.Sequential([
+        keras.layers.Resizing(dim, dim, crop_to_aspect_ratio=True, name='resize'),
+        keras.layers.CenterCrop(crop_dim, crop_dim, name='center_crop'),
+        keras.layers.RandomFlip('horizontal', name='random_flip', training=True),
+        keras.layers.RandomRotation(rotation, name='random_rotation', training=True),
+        keras.layers.RandomContrast(contrast, name='random_contrast', training=True),
+        keras.layers.RandomTranslation(translation, translation, name='random_translation', training=True)
+    ], name='augmentation_block')
 
-def build_lichen_classifier(input_shape: tuple,
-                            dim: int,
-                            crop_dim: int,
-                            rotation: float,
-                            contrast: float,
-                            translation: float,
-                            base_model_name: str,
-                            num_classes: int) -> keras.Model:
+def build_lichen_classifier(input_shape: tuple = cfg.input_shape,
+                            dim: int = cfg.dim,
+                            crop_dim: int = cfg.crop_dim,
+                            rotation: float = cfg.rotation_factor,
+                            contrast: float = cfg.contrast_factor,
+                            translation: float = cfg.translation_factor,
+                            base_model_name: str = cfg.base_model,
+                            num_classes: int = cfg.num_classes) -> keras.Model:
 
     inputs = keras.Input(shape=input_shape, name='input_layer')
 
@@ -102,7 +115,7 @@ def get_optimizer(name: str = 'adam',
 
     if name.lower() not in OPT_DICT:
         raise ValueError(
-            f"Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.")
+            f'Invalid optimizer name: {name}. Choose from {list(OPT_DICT.keys())}.')
 
     if use_schedule:
         if schedule == 'exponential':
@@ -117,8 +130,7 @@ def get_optimizer(name: str = 'adam',
                                                                    m_mul=m_mul,
                                                                    alpha=alpha)
         else:
-            raise ValueError(
-                "Invalid schedule type. Choose from 'exponential' or 'cosine'")
+            raise ValueError("Invalid schedule type. Choose from 'exponential' or 'cosine'")
     else:
         lr_schedule = lr
 

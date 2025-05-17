@@ -1,4 +1,3 @@
-###
 from modeling.evaluate import PlotResults
 
 trial4_fine_results = PlotResults(test_type='fine', trial=4)

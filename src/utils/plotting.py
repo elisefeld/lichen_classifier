@@ -5,11 +5,6 @@ import cv2
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
-from utils import data
-from tensorflow import keras
-
-
 
 from config import Config
 cfg = Config()
@@ -22,12 +17,9 @@ plt.style.use('seaborn-v0_8-colorblind')
 sns.set_theme(context='talk', style='white')
 
 ### Functions ###
-
-def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
-    save_path = cfg.class_metrics_dir / 'plot_class_distribution.png'
+def plot_class_distribution(df: pd.DataFrame, filter: bool = cfg.filter_classes):
     if filter:
         df = df[df['genus'].isin(cfg.train_classes)].copy()
-
     class_counts = df['genus'].value_counts()
     plt.figure(figsize=(12, 10))
     sns.barplot(x=class_counts.index, y=class_counts.values)
@@ -35,12 +27,11 @@ def plot_class_distribution(df: pd.DataFrame, filter: bool = True):
     plt.xlabel('Taxonomic Genus')
     plt.ylabel('Count')
     plt.xticks(rotation=45)
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(cfg.EDA_dir/'plot_class_distribution.png', bbox_inches='tight')
     plt.close()
 
 
 def plot_time(df: pd.DataFrame, column: str = 'observed_on_month', type: str = 'Month', filter: bool = True):
-    save_path = cfg.time_plots_dir / f'plot_{type}.png'
     if filter:
         df = df[df['genus'].isin(cfg.train_classes)].copy()
     if column == 'observed_on_year':
@@ -50,37 +41,37 @@ def plot_time(df: pd.DataFrame, column: str = 'observed_on_month', type: str = '
     plt.title(f'Number of Observations by {type}')
     plt.ylabel('Count')
     plt.xlabel(type)
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(cfg.EDA_dir/f'plot_{type}.png', bbox_inches='tight')
     plt.close()
 
 
-def plot_location(df: pd.DataFrame, filter: bool = True, facet: bool = False):
+def plot_location(df: pd.DataFrame, filter: bool = cfg.filter_classes, facet_type: str = 'facetted'):
     if filter:
         df = df[df['genus'].isin(cfg.train_classes)].copy()
 
-    if facet:
-        save_path = cfg.location_plots_dir / f'plot_location_facetted.png'
-        g = sns.FacetGrid(df, col='genus', col_wrap=5, height=3, hue='morphology')
+    if facet_type == 'facetted':
+        g = sns.FacetGrid(df, col='genus', col_wrap=5,
+                          height=3, hue='morphology')
         g.map(sns.scatterplot, 'longitude', 'latitude', alpha=0.5, s=10)
         g.figure.subplots_adjust(top=0.9)
         g.set_axis_labels('Longitude', 'Latitude')
         g.figure.suptitle('Geospatial Distribution of Observations')
-        
+
     else:
-        save_path = cfg.location_plots_dir / f'plot_location.png'
         plt.figure(figsize=(10, 6))
-        sns.scatterplot(data=df, x='longitude', y='latitude', hue='morphology', alpha=0.5, s=10)
-    
+        sns.scatterplot(data=df, x='longitude', y='latitude',
+                        hue='morphology', alpha=0.5, s=10)
+
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.title('Geospatial Distribution of Observations by Morphology')
-    
-    plt.savefig(save_path, bbox_inches="tight")
+
+    plt.savefig(
+        cfg.EDA_dir/f'plot_location_{facet_type}.png', bbox_inches='tight')
     plt.close()
 
 
-def plot_rgb_histograms(df: tf.data.Dataset, class_names: list, bins:int=256, cols:int=4):
-    save_path = cfg.histograms_dir / 'plot_rgb_histograms.png'
+def plot_rgb_histograms(df: tf.data.Dataset, class_names: list, bins: int = 256, cols: int = 4):
     histograms = {
         class_name: {'r': np.zeros(bins), 'g': np.zeros(
             bins), 'b': np.zeros(bins), 'count': 0}
@@ -137,7 +128,5 @@ def plot_rgb_histograms(df: tf.data.Dataset, class_names: list, bins:int=256, co
     fig.legend(handles, labels, loc='upper right')
 
     fig.suptitle('RGB Channel Histograms per Genus')
-    plt.savefig(save_path, bbox_inches="tight")
+    plt.savefig(cfg.EDA_dir/'plot_rgb_histograms.png', bbox_inches='tight')
     plt.close()
-
-
